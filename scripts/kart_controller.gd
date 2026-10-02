@@ -97,8 +97,10 @@ func _build_kart() -> void:
     var cam := Camera3D.new()
     cam.position = Vector3(0,3.0,6.4)
     cam.rotation_degrees.x = -12
-    cam.current = true
+    cam.fov = 75.0
+    cam.near = 0.1
     add_child(cam)
+    cam.make_current()
 
 func _physics_process(delta: float) -> void:
     if finished or track == null:
