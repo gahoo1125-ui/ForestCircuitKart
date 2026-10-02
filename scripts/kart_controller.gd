@@ -22,6 +22,12 @@ var finished: bool = false
 var was_drifting: bool = false
 
 var gold_boost_root: Node3D
+var speed_fx_root: Node3D
+var speed_streaks: Array[MeshInstance3D] = []
+var gold_dragon_fx_root: Node3D
+var gold_dragon_segments: Array[MeshInstance3D] = []
+var gold_dragon_head_root: Node3D
+var boost_fx_time: float = 0.0
 var remote_position: Vector3 = Vector3.ZERO
 var remote_yaw: float = 0.0
 var remote_speed: float = 0.0
@@ -112,9 +118,12 @@ func _build_kart() -> void:
             wheel.material_override = dark
             root.add_child(wheel)
 
+    _build_speed_fx()
+
     if kart_id == "gold":
         _build_gold_dragon(root)
         _build_gold_boost()
+        _build_gold_dragon_flight()
 
 func _build_gold_dragon(root: Node3D) -> void:
     var dragon_root: Node3D = Node3D.new()
@@ -240,6 +249,146 @@ func _build_gold_boost() -> void:
         core.material_override = bright_mat
         gold_boost_root.add_child(core)
 
+
+func _build_speed_fx() -> void:
+    speed_fx_root = Node3D.new()
+    speed_fx_root.name = "BoostSpeedLines"
+    speed_fx_root.visible = false
+    add_child(speed_fx_root)
+
+    var streak_mat: StandardMaterial3D = StandardMaterial3D.new()
+    streak_mat.albedo_color = Color(0.82,0.93,1.0)
+    streak_mat.emission_enabled = true
+    streak_mat.emission = Color(0.48,0.78,1.0)
+    streak_mat.emission_energy_multiplier = 2.2
+    streak_mat.roughness = 0.18
+
+    if kart_id == "gold":
+        streak_mat.albedo_color = Color(1.0,0.80,0.20)
+        streak_mat.emission = Color(1.0,0.52,0.05)
+        streak_mat.emission_energy_multiplier = 3.0
+
+    for i in range(10):
+        var streak: MeshInstance3D = MeshInstance3D.new()
+        var streak_mesh: BoxMesh = BoxMesh.new()
+        streak_mesh.size = Vector3(0.045,0.045,1.0 + float(i % 4) * 0.32)
+        streak.mesh = streak_mesh
+        streak.material_override = streak_mat
+        streak.position = Vector3(
+            -1.15 + float(i % 5) * 0.58,
+            0.22 + float(i / 5) * 0.72,
+            1.5 + float(i) * 0.36
+        )
+        speed_fx_root.add_child(streak)
+        speed_streaks.append(streak)
+
+func _build_gold_dragon_flight() -> void:
+    gold_dragon_fx_root = Node3D.new()
+    gold_dragon_fx_root.name = "FlyingGoldenDragon"
+    gold_dragon_fx_root.visible = false
+    add_child(gold_dragon_fx_root)
+
+    var dragon_mat: StandardMaterial3D = StandardMaterial3D.new()
+    dragon_mat.albedo_color = Color(1.0,0.68,0.10)
+    dragon_mat.metallic = 0.55
+    dragon_mat.roughness = 0.20
+    dragon_mat.emission_enabled = true
+    dragon_mat.emission = Color(1.0,0.42,0.03)
+    dragon_mat.emission_energy_multiplier = 3.2
+
+    var bright_mat: StandardMaterial3D = StandardMaterial3D.new()
+    bright_mat.albedo_color = Color(1.0,0.96,0.55)
+    bright_mat.metallic = 0.40
+    bright_mat.roughness = 0.16
+    bright_mat.emission_enabled = true
+    bright_mat.emission = Color(1.0,0.86,0.28)
+    bright_mat.emission_energy_multiplier = 3.4
+
+    for i in range(9):
+        var seg: MeshInstance3D = MeshInstance3D.new()
+        var seg_mesh: SphereMesh = SphereMesh.new()
+        var r: float = 0.28 - float(i) * 0.014
+        seg_mesh.radius = r
+        seg_mesh.height = r * 2.0
+        seg.mesh = seg_mesh
+        seg.scale = Vector3(1.0,0.72,1.28)
+        seg.material_override = dragon_mat
+        gold_dragon_fx_root.add_child(seg)
+        gold_dragon_segments.append(seg)
+
+    gold_dragon_head_root = Node3D.new()
+    gold_dragon_fx_root.add_child(gold_dragon_head_root)
+
+    var head: MeshInstance3D = MeshInstance3D.new()
+    var head_mesh: SphereMesh = SphereMesh.new()
+    head_mesh.radius = 0.38
+    head_mesh.height = 0.64
+    head.mesh = head_mesh
+    head.scale = Vector3(1.28,0.78,1.38)
+    head.material_override = dragon_mat
+    gold_dragon_head_root.add_child(head)
+
+    var snout: MeshInstance3D = MeshInstance3D.new()
+    var snout_mesh: BoxMesh = BoxMesh.new()
+    snout_mesh.size = Vector3(0.34,0.20,0.48)
+    snout.mesh = snout_mesh
+    snout.position = Vector3(0.0,-0.03,-0.36)
+    snout.material_override = bright_mat
+    gold_dragon_head_root.add_child(snout)
+
+    for side in [-1.0,1.0]:
+        var horn: MeshInstance3D = MeshInstance3D.new()
+        var horn_mesh: CylinderMesh = CylinderMesh.new()
+        horn_mesh.top_radius = 0.0
+        horn_mesh.bottom_radius = 0.07
+        horn_mesh.height = 0.42
+        horn.mesh = horn_mesh
+        horn.position = Vector3(float(side) * 0.20,0.28,0.02)
+        horn.rotation_degrees = Vector3(-55.0,0.0,float(side) * 28.0)
+        horn.material_override = bright_mat
+        gold_dragon_head_root.add_child(horn)
+
+        var wing: MeshInstance3D = MeshInstance3D.new()
+        var wing_mesh: BoxMesh = BoxMesh.new()
+        wing_mesh.size = Vector3(0.72,0.06,0.28)
+        wing.mesh = wing_mesh
+        wing.position = Vector3(float(side) * 0.52,0.04,0.35)
+        wing.rotation_degrees = Vector3(0.0,float(side) * 22.0,float(side) * 18.0)
+        wing.material_override = bright_mat
+        gold_dragon_head_root.add_child(wing)
+
+func _update_boost_fx(delta: float, boosting: bool) -> void:
+    boost_fx_time += delta
+
+    if speed_fx_root:
+        speed_fx_root.visible = boosting
+        if boosting:
+            var stretch: float = 1.0 + sin(boost_fx_time * 22.0) * 0.16
+            speed_fx_root.scale = Vector3(1.0,1.0,stretch)
+            for i in range(speed_streaks.size()):
+                var streak: MeshInstance3D = speed_streaks[i]
+                streak.position.z = 1.2 + fmod(boost_fx_time * (11.0 + float(i) * 0.55) + float(i) * 0.42,4.6)
+                streak.scale.z = 1.0 + sin(boost_fx_time * 25.0 + float(i)) * 0.28
+        else:
+            speed_fx_root.scale = Vector3.ONE
+
+    if gold_dragon_fx_root:
+        gold_dragon_fx_root.visible = boosting
+        if boosting:
+            var head_z: float = 2.0 + sin(boost_fx_time * 4.0) * 0.14
+            var head_x: float = sin(boost_fx_time * 6.0) * 0.24
+            var head_y: float = 0.82 + sin(boost_fx_time * 7.0) * 0.10
+            gold_dragon_head_root.position = Vector3(head_x,head_y,head_z)
+            gold_dragon_head_root.rotation.y = sin(boost_fx_time * 3.2) * 0.22
+
+            for i in range(gold_dragon_segments.size()):
+                var t: float = float(i + 1) / float(gold_dragon_segments.size())
+                var seg: MeshInstance3D = gold_dragon_segments[i]
+                var wave_x: float = sin(boost_fx_time * 7.0 + t * 5.0) * (0.30 + t * 0.34)
+                var wave_y: float = 0.72 + sin(boost_fx_time * 5.5 + t * 3.5) * 0.14
+                var z: float = head_z + 0.55 + t * 4.1
+                seg.position = Vector3(wave_x,wave_y,z)
+
 func _read_controls() -> Dictionary:
     if control_mode == "cpu":
         return _cpu_controls()
@@ -318,6 +467,8 @@ func _physics_process(delta: float) -> void:
         if gold_boost_root.visible:
             var pulse: float = 1.0 + sin(float(Time.get_ticks_msec()) * 0.018) * 0.12
             gold_boost_root.scale = Vector3(1.0,1.0,pulse)
+
+    _update_boost_fx(delta,boost_timer > 0.0)
 
     if throttle_state > 0.03:
         forward_speed = move_toward(forward_speed,max_speed,accel*throttle_state*delta)

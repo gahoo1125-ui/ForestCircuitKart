@@ -63,10 +63,22 @@ func _process(delta: float) -> void:
 func _follow_camera(cam: Camera3D, kart: KartController, delta: float) -> void:
     if not kart or not is_instance_valid(kart):
         return
+
+    var boosting: bool = kart.boost_timer > 0.0
     var forward: Vector3 = -kart.global_transform.basis.z.normalized()
-    var target: Vector3 = kart.global_position + forward * 3.6 + Vector3.UP * 1.0
-    var desired: Vector3 = kart.global_position - forward * 8.2 + Vector3.UP * 4.0
-    cam.global_position = cam.global_position.lerp(desired,clamp(delta*7.0,0.0,1.0))
+    var target: Vector3 = kart.global_position + forward * (4.6 if boosting else 3.6) + Vector3.UP * 1.0
+
+    var follow_distance: float = 10.4 if boosting else 8.2
+    var follow_height: float = 3.75 if boosting else 4.0
+    var desired: Vector3 = kart.global_position - forward * follow_distance + Vector3.UP * follow_height
+
+    if boosting:
+        var shake_t: float = float(Time.get_ticks_msec()) * 0.001
+        desired += kart.global_transform.basis.x.normalized() * sin(shake_t * 36.0) * 0.10
+        desired += Vector3.UP * cos(shake_t * 31.0) * 0.055
+
+    cam.global_position = cam.global_position.lerp(desired,clamp(delta*(10.0 if boosting else 7.0),0.0,1.0))
+    cam.fov = lerp(cam.fov,96.0 if boosting else 72.0,clamp(delta*6.5,0.0,1.0))
     cam.look_at(target,Vector3.UP)
 
 func _add_key(action: StringName, keycode: Key) -> void:
