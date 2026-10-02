@@ -61,9 +61,14 @@ func _build_kart() -> void:
 
     var c: Array = stats.get("color",[0.8,0.2,0.2])
     var body_mat: StandardMaterial3D = StandardMaterial3D.new()
-    body_mat.albedo_color = Color(float(c[0]),float(c[1]),float(c[2]))
-    body_mat.metallic = 0.72
-    body_mat.roughness = 0.22
+    if kart_id == "gold":
+        body_mat.albedo_color = Color(0.055,0.055,0.07)
+        body_mat.metallic = 0.86
+        body_mat.roughness = 0.17
+    else:
+        body_mat.albedo_color = Color(float(c[0]),float(c[1]),float(c[2]))
+        body_mat.metallic = 0.72
+        body_mat.roughness = 0.22
 
     var dark: StandardMaterial3D = StandardMaterial3D.new()
     dark.albedo_color = Color(0.035,0.04,0.05)
@@ -121,9 +126,178 @@ func _build_kart() -> void:
     _build_speed_fx()
 
     if kart_id == "gold":
+        _build_gold_hypercar(root)
         _build_gold_dragon(root)
         _build_gold_boost()
         _build_gold_dragon_flight()
+
+func _build_gold_hypercar(root: Node3D) -> void:
+    var black_mat: StandardMaterial3D = StandardMaterial3D.new()
+    black_mat.albedo_color = Color(0.025,0.025,0.035)
+    black_mat.metallic = 0.88
+    black_mat.roughness = 0.14
+
+    var graphite_mat: StandardMaterial3D = StandardMaterial3D.new()
+    graphite_mat.albedo_color = Color(0.13,0.13,0.16)
+    graphite_mat.metallic = 0.78
+    graphite_mat.roughness = 0.18
+
+    var gold_mat: StandardMaterial3D = StandardMaterial3D.new()
+    gold_mat.albedo_color = Color(1.0,0.73,0.08)
+    gold_mat.metallic = 0.94
+    gold_mat.roughness = 0.10
+    gold_mat.emission_enabled = true
+    gold_mat.emission = Color(0.52,0.25,0.01)
+    gold_mat.emission_energy_multiplier = 1.55
+
+    var blue_light: StandardMaterial3D = StandardMaterial3D.new()
+    blue_light.albedo_color = Color(0.70,0.91,1.0)
+    blue_light.emission_enabled = true
+    blue_light.emission = Color(0.18,0.62,1.0)
+    blue_light.emission_energy_multiplier = 4.2
+    blue_light.roughness = 0.06
+
+    # Long wedge nose and split blades.
+    var center_wedge: MeshInstance3D = MeshInstance3D.new()
+    var center_wedge_mesh: BoxMesh = BoxMesh.new()
+    center_wedge_mesh.size = Vector3(0.78,0.16,1.62)
+    center_wedge.mesh = center_wedge_mesh
+    center_wedge.position = Vector3(0.0,0.43,-1.46)
+    center_wedge.rotation_degrees.x = 16.0
+    center_wedge.material_override = graphite_mat
+    root.add_child(center_wedge)
+
+    var gold_spine: MeshInstance3D = MeshInstance3D.new()
+    var gold_spine_mesh: BoxMesh = BoxMesh.new()
+    gold_spine_mesh.size = Vector3(0.11,0.035,1.58)
+    gold_spine.mesh = gold_spine_mesh
+    gold_spine.position = Vector3(0.0,0.54,-1.43)
+    gold_spine.rotation_degrees.x = 16.0
+    gold_spine.material_override = gold_mat
+    root.add_child(gold_spine)
+
+    for side in [-1.0,1.0]:
+        var s: float = float(side)
+
+        var nose_blade: MeshInstance3D = MeshInstance3D.new()
+        var nose_blade_mesh: BoxMesh = BoxMesh.new()
+        nose_blade_mesh.size = Vector3(0.44,0.12,1.36)
+        nose_blade.mesh = nose_blade_mesh
+        nose_blade.position = Vector3(s*0.64,0.33,-1.44)
+        nose_blade.rotation_degrees = Vector3(8.0,s*-22.0,s*8.0)
+        nose_blade.material_override = black_mat
+        root.add_child(nose_blade)
+
+        var splitter: MeshInstance3D = MeshInstance3D.new()
+        var splitter_mesh: BoxMesh = BoxMesh.new()
+        splitter_mesh.size = Vector3(0.52,0.055,0.86)
+        splitter.mesh = splitter_mesh
+        splitter.position = Vector3(s*0.86,0.20,-1.72)
+        splitter.rotation_degrees = Vector3(0.0,s*-24.0,s*8.0)
+        splitter.material_override = graphite_mat
+        root.add_child(splitter)
+
+        var front_gold_edge: MeshInstance3D = MeshInstance3D.new()
+        var front_gold_mesh: BoxMesh = BoxMesh.new()
+        front_gold_mesh.size = Vector3(0.055,0.045,1.05)
+        front_gold_edge.mesh = front_gold_mesh
+        front_gold_edge.position = Vector3(s*0.73,0.43,-1.44)
+        front_gold_edge.rotation_degrees = Vector3(8.0,s*-20.0,s*7.0)
+        front_gold_edge.material_override = gold_mat
+        root.add_child(front_gold_edge)
+
+        var shoulder: MeshInstance3D = MeshInstance3D.new()
+        var shoulder_mesh: BoxMesh = BoxMesh.new()
+        shoulder_mesh.size = Vector3(0.42,0.24,1.18)
+        shoulder.mesh = shoulder_mesh
+        shoulder.position = Vector3(s*0.79,0.50,-0.50)
+        shoulder.rotation_degrees = Vector3(0.0,s*-14.0,s*8.0)
+        shoulder.material_override = black_mat
+        root.add_child(shoulder)
+
+        var side_plate: MeshInstance3D = MeshInstance3D.new()
+        var side_plate_mesh: BoxMesh = BoxMesh.new()
+        side_plate_mesh.size = Vector3(0.16,0.28,1.70)
+        side_plate.mesh = side_plate_mesh
+        side_plate.position = Vector3(s*0.98,0.38,0.18)
+        side_plate.rotation_degrees.z = s*8.0
+        side_plate.material_override = graphite_mat
+        root.add_child(side_plate)
+
+        var side_gold: MeshInstance3D = MeshInstance3D.new()
+        var side_gold_mesh: BoxMesh = BoxMesh.new()
+        side_gold_mesh.size = Vector3(0.055,0.06,1.55)
+        side_gold.mesh = side_gold_mesh
+        side_gold.position = Vector3(s*0.99,0.51,0.12)
+        side_gold.rotation_degrees.z = s*8.0
+        side_gold.material_override = gold_mat
+        root.add_child(side_gold)
+
+        var headlight: MeshInstance3D = MeshInstance3D.new()
+        var headlight_mesh: BoxMesh = BoxMesh.new()
+        headlight_mesh.size = Vector3(0.34,0.045,0.12)
+        headlight.mesh = headlight_mesh
+        headlight.position = Vector3(s*0.37,0.60,-1.42)
+        headlight.rotation_degrees = Vector3(0.0,s*-12.0,s*5.0)
+        headlight.material_override = blue_light
+        root.add_child(headlight)
+
+        # Tall rear blades inspired by an extreme track hypercar.
+        var rear_tower: MeshInstance3D = MeshInstance3D.new()
+        var rear_tower_mesh: BoxMesh = BoxMesh.new()
+        rear_tower_mesh.size = Vector3(0.25,0.92,0.50)
+        rear_tower.mesh = rear_tower_mesh
+        rear_tower.position = Vector3(s*0.57,1.00,1.18)
+        rear_tower.rotation_degrees = Vector3(-8.0,s*7.0,s*12.0)
+        rear_tower.material_override = black_mat
+        root.add_child(rear_tower)
+
+        var rear_fin: MeshInstance3D = MeshInstance3D.new()
+        var rear_fin_mesh: BoxMesh = BoxMesh.new()
+        rear_fin_mesh.size = Vector3(0.33,0.12,0.78)
+        rear_fin.mesh = rear_fin_mesh
+        rear_fin.position = Vector3(s*0.69,1.36,1.33)
+        rear_fin.rotation_degrees = Vector3(-10.0,s*12.0,s*22.0)
+        rear_fin.material_override = graphite_mat
+        root.add_child(rear_fin)
+
+        var rear_gold_edge: MeshInstance3D = MeshInstance3D.new()
+        var rear_gold_mesh: BoxMesh = BoxMesh.new()
+        rear_gold_mesh.size = Vector3(0.055,0.66,0.08)
+        rear_gold_edge.mesh = rear_gold_mesh
+        rear_gold_edge.position = Vector3(s*0.61,1.05,1.08)
+        rear_gold_edge.rotation_degrees.z = s*12.0
+        rear_gold_edge.material_override = gold_mat
+        root.add_child(rear_gold_edge)
+
+        # Gold wheel halo makes the wheels read like the reference without copying it.
+        for z in [-0.9,0.9]:
+            var halo: MeshInstance3D = MeshInstance3D.new()
+            var halo_mesh: CylinderMesh = CylinderMesh.new()
+            halo_mesh.top_radius = 0.40
+            halo_mesh.bottom_radius = 0.40
+            halo_mesh.height = 0.035
+            halo.mesh = halo_mesh
+            halo.position = Vector3(s*1.09,0.30,float(z))
+            halo.rotation_degrees.z = 90.0
+            halo.material_override = gold_mat
+            root.add_child(halo)
+
+    var rear_cross: MeshInstance3D = MeshInstance3D.new()
+    var rear_cross_mesh: BoxMesh = BoxMesh.new()
+    rear_cross_mesh.size = Vector3(1.72,0.12,0.34)
+    rear_cross.mesh = rear_cross_mesh
+    rear_cross.position = Vector3(0.0,1.02,1.48)
+    rear_cross.material_override = black_mat
+    root.add_child(rear_cross)
+
+    var rear_cross_gold: MeshInstance3D = MeshInstance3D.new()
+    var rear_cross_gold_mesh: BoxMesh = BoxMesh.new()
+    rear_cross_gold_mesh.size = Vector3(1.48,0.055,0.09)
+    rear_cross_gold.mesh = rear_cross_gold_mesh
+    rear_cross_gold.position = Vector3(0.0,1.10,1.46)
+    rear_cross_gold.material_override = gold_mat
+    root.add_child(rear_cross_gold)
 
 func _build_gold_dragon(root: Node3D) -> void:
     var dragon_root: Node3D = Node3D.new()
