@@ -113,7 +113,94 @@ func _build_kart() -> void:
             root.add_child(wheel)
 
     if kart_id == "gold":
+        _build_gold_dragon(root)
         _build_gold_boost()
+
+func _build_gold_dragon(root: Node3D) -> void:
+    var dragon_root: Node3D = Node3D.new()
+    dragon_root.name = "GoldenDragonEmblem"
+    root.add_child(dragon_root)
+
+    var red_mat: StandardMaterial3D = StandardMaterial3D.new()
+    red_mat.albedo_color = Color(0.42,0.025,0.035)
+    red_mat.metallic = 0.65
+    red_mat.roughness = 0.23
+    red_mat.emission_enabled = true
+    red_mat.emission = Color(0.20,0.01,0.015)
+
+    var gold_mat: StandardMaterial3D = StandardMaterial3D.new()
+    gold_mat.albedo_color = Color(1.0,0.72,0.12)
+    gold_mat.metallic = 0.88
+    gold_mat.roughness = 0.16
+    gold_mat.emission_enabled = true
+    gold_mat.emission = Color(0.28,0.12,0.01)
+
+    var path: Array[Vector3] = [
+        Vector3(0.00,0.575,-1.73),
+        Vector3(-0.22,0.59,-1.51),
+        Vector3(0.20,0.60,-1.28),
+        Vector3(-0.18,0.61,-1.04),
+        Vector3(0.18,0.62,-0.80),
+        Vector3(-0.12,0.63,-0.56),
+        Vector3(0.10,0.64,-0.34)
+    ]
+
+    for i in range(path.size() - 1):
+        var a: Vector3 = path[i]
+        var b: Vector3 = path[i + 1]
+        var mid: Vector3 = (a + b) * 0.5
+        var dir: Vector3 = (b - a).normalized()
+        var length: float = a.distance_to(b)
+
+        var seg: MeshInstance3D = MeshInstance3D.new()
+        var seg_mesh: BoxMesh = BoxMesh.new()
+        seg_mesh.size = Vector3(0.09,0.035,length + 0.025)
+        seg.mesh = seg_mesh
+        seg.position = mid
+        seg.basis = Basis.looking_at(dir,Vector3.UP)
+        seg.material_override = red_mat
+        dragon_root.add_child(seg)
+
+    var head: MeshInstance3D = MeshInstance3D.new()
+    var head_mesh: SphereMesh = SphereMesh.new()
+    head_mesh.radius = 0.16
+    head_mesh.height = 0.24
+    head.mesh = head_mesh
+    head.scale = Vector3(1.18,0.34,1.0)
+    head.position = Vector3(0.0,0.615,-1.84)
+    head.material_override = red_mat
+    dragon_root.add_child(head)
+
+    for horn_x in [-0.13,0.13]:
+        var horn: MeshInstance3D = MeshInstance3D.new()
+        var horn_mesh: CylinderMesh = CylinderMesh.new()
+        horn_mesh.top_radius = 0.0
+        horn_mesh.bottom_radius = 0.055
+        horn_mesh.height = 0.28
+        horn.mesh = horn_mesh
+        horn.position = Vector3(float(horn_x),0.72,-1.84)
+        horn.rotation_degrees = Vector3(72,0,0)
+        horn.material_override = gold_mat
+        dragon_root.add_child(horn)
+
+    for side in [-1.0,1.0]:
+        var wing: MeshInstance3D = MeshInstance3D.new()
+        var wing_mesh: BoxMesh = BoxMesh.new()
+        wing_mesh.size = Vector3(0.46,0.025,0.09)
+        wing.mesh = wing_mesh
+        wing.position = Vector3(float(side) * 0.34,0.615,-1.15)
+        wing.rotation_degrees.y = float(side) * 24.0
+        wing.material_override = gold_mat
+        dragon_root.add_child(wing)
+
+        var side_mark: MeshInstance3D = MeshInstance3D.new()
+        var side_mesh: BoxMesh = BoxMesh.new()
+        side_mesh.size = Vector3(0.035,0.22,0.72)
+        side_mark.mesh = side_mesh
+        side_mark.position = Vector3(float(side) * 0.87,0.48,-0.48)
+        side_mark.rotation_degrees.z = float(side) * 8.0
+        side_mark.material_override = red_mat
+        dragon_root.add_child(side_mark)
 
 func _build_gold_boost() -> void:
     gold_boost_root = Node3D.new()
