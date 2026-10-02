@@ -48,6 +48,21 @@ func setup(id: String, track_ref: TrackBuilder, mode: String = "player1", spawn_
     remote_yaw = rotation.y
     started_at = Time.get_ticks_msec()
 
+func setup_preview(id: String) -> void:
+    kart_id = id
+    track = null
+    control_mode = "preview"
+
+    var f: FileAccess = FileAccess.open("res://assets/data/karts.json",FileAccess.READ)
+    var data: Dictionary = JSON.parse_string(f.get_as_text()) if f else {}
+    stats = data.get(id,data.get("rookie",{}))
+
+    _build_kart()
+    collision_layer = 0
+    collision_mask = 0
+    set_physics_process(false)
+
+
 func _build_kart() -> void:
     var collider: CollisionShape3D = CollisionShape3D.new()
     var shape: BoxShape3D = BoxShape3D.new()

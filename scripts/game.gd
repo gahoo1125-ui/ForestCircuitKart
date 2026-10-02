@@ -1,6 +1,7 @@
 extends Node3D
 
 const LAN_PORT: int = 24567
+const LOBBY_SCENE: PackedScene = preload("res://scenes/Lobby.tscn")
 
 var track: TrackBuilder
 var player: KartController
@@ -153,115 +154,26 @@ func _build_world() -> void:
     race_camera.make_current()
 
 func _build_menu() -> void:
-    menu_layer = CanvasLayer.new()
-    menu_layer.layer = 30
+    var lobby: LobbyUI = LOBBY_SCENE.instantiate() as LobbyUI
+    menu_layer = lobby
     add_child(menu_layer)
+    lobby.configure(kart_data,kart_order,_get_lan_ip(),LAN_PORT)
+    lobby.start_requested.connect(_on_lobby_start_requested)
 
-    var root: Control = Control.new()
-    root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    menu_layer.add_child(root)
+    result_label = lobby.result_label
+    selected_label = lobby.selected_label
+    mode_label = lobby.mode_label
+    network_status_label = lobby.network_status_label
+    ip_edit = lobby.ip_edit
+    selected_kart = lobby.selected_kart
+    selected_mode = lobby.selected_mode
 
-    var shade: ColorRect = ColorRect.new()
-    shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    shade.color = Color(0.02,0.04,0.05,0.44)
-    shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    root.add_child(shade)
-
-    var center: CenterContainer = CenterContainer.new()
-    center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    root.add_child(center)
-
-    var panel: PanelContainer = PanelContainer.new()
-    panel.custom_minimum_size = Vector2(960,680)
-    center.add_child(panel)
-
-    var margin: MarginContainer = MarginContainer.new()
-    margin.add_theme_constant_override("margin_left",24)
-    margin.add_theme_constant_override("margin_right",24)
-    margin.add_theme_constant_override("margin_top",18)
-    margin.add_theme_constant_override("margin_bottom",18)
-    panel.add_child(margin)
-
-    var v: VBoxContainer = VBoxContainer.new()
-    v.add_theme_constant_override("separation",7)
-    margin.add_child(v)
-
-    var title: Label = Label.new()
-    title.text = "FOREST CIRCUIT KART 3D"
-    title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    title.add_theme_font_size_override("font_size",30)
-    v.add_child(title)
-
-    mode_label = Label.new()
-    mode_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    mode_label.add_theme_font_size_override("font_size",18)
-    v.add_child(mode_label)
-
-    var modes: HBoxContainer = HBoxContainer.new()
-    modes.alignment = BoxContainer.ALIGNMENT_CENTER
-    modes.add_theme_constant_override("separation",8)
-    v.add_child(modes)
-
-    _add_mode_button(modes,"CPU 대전","cpu")
-    _add_mode_button(modes,"화면분할 2P","split")
-    _add_mode_button(modes,"LAN 호스트","lan_host")
-    _add_mode_button(modes,"LAN 참가","lan_join")
-
-    var lan_row: HBoxContainer = HBoxContainer.new()
-    lan_row.alignment = BoxContainer.ALIGNMENT_CENTER
-    v.add_child(lan_row)
-
-    ip_edit = LineEdit.new()
-    ip_edit.placeholder_text = "호스트 LAN IP 예: 192.168.0.10"
-    ip_edit.text = "127.0.0.1"
-    ip_edit.custom_minimum_size = Vector2(330,38)
-    lan_row.add_child(ip_edit)
-
-    network_status_label = Label.new()
-    network_status_label.text = "내 LAN IP: %s  / 포트: %d" % [_get_lan_ip(),LAN_PORT]
-    network_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    v.add_child(network_status_label)
-
-    selected_label = Label.new()
-    selected_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    selected_label.add_theme_font_size_override("font_size",17)
-    v.add_child(selected_label)
-
-    var scroll: ScrollContainer = ScrollContainer.new()
-    scroll.custom_minimum_size = Vector2(0,390)
-    scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    v.add_child(scroll)
-
-    var grid: GridContainer = GridContainer.new()
-    grid.columns = 2
-    grid.add_theme_constant_override("h_separation",10)
-    grid.add_theme_constant_override("v_separation",8)
-    grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    scroll.add_child(grid)
-
-    for id in kart_order:
-        if kart_data.has(id):
-            var entry: Dictionary = kart_data[id]
-            var b: Button = Button.new()
-            b.text = str(entry.get("display_name",id)) + "\n" + str(entry.get("menu_description",""))
-            b.custom_minimum_size = Vector2(420,64)
-            b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-            b.pressed.connect(_select_kart.bind(id))
-            grid.add_child(b)
-
-    var start: Button = Button.new()
-    start.text = "선택한 모드 시작"
-    start.custom_minimum_size.y = 48
-    start.pressed.connect(_start_selected_mode)
-    v.add_child(start)
-
-    result_label = Label.new()
-    result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    v.add_child(result_label)
-
-    _set_mode("cpu")
-    _select_kart("rookie")
+func _on_lobby_start_requested(mode_value: String, kart_id: String, host_ip: String) -> void:
+    selected_mode = mode_value
+    selected_kart = kart_id
+    if ip_edit:
+        ip_edit.text = host_ip
+    _start_selected_mode()
 
 func _add_mode_button(parent: HBoxContainer, text_value: String, mode_value: String) -> void:
     var b: Button = Button.new()
