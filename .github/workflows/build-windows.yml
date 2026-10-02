@@ -41,13 +41,24 @@ jobs:
           mkdir -p "$TEMPLATE_DIR"
           cp -R /tmp/templates/templates/. "$TEMPLATE_DIR/"
 
-      - name: Validate and import
-        run: godot --headless --path . --import
+      - name: Validate scripts
+        run: |
+          set -o pipefail
+          godot --headless --path . --editor --quit 2>&1 | tee /tmp/godot-validate.log
+          if grep -E "SCRIPT ERROR|Parse Error|Compile Error|Failed to load script" /tmp/godot-validate.log; then
+            echo "GDScript validation failed."
+            exit 1
+          fi
 
       - name: Build Windows EXE
         run: |
+          set -o pipefail
           mkdir -p build
-          godot --headless --path . --export-release "Windows Desktop" "build/ForestCircuitKart.exe"
+          godot --headless --path . --export-release "Windows Desktop" "build/ForestCircuitKart.exe" 2>&1 | tee /tmp/godot-export.log
+          if grep -E "SCRIPT ERROR|Parse Error|Compile Error|Failed to load script" /tmp/godot-export.log; then
+            echo "GDScript export failed."
+            exit 1
+          fi
           test -f build/ForestCircuitKart.exe
           ls -lh build/ForestCircuitKart.exe
 
