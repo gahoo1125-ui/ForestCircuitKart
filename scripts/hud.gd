@@ -1,6 +1,8 @@
 extends CanvasLayer
 class_name RaceHUD
 
+signal lobby_requested
+
 var speed_label: Label
 var lap_label: Label
 var n2o_label: Label
@@ -8,18 +10,20 @@ var drift_bar: ProgressBar
 var status_label: Label
 
 func _ready() -> void:
-    var root := MarginContainer.new()
+    layer = 20
+
+    var root: MarginContainer = MarginContainer.new()
     root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    root.add_theme_constant_override("margin_left", 24)
-    root.add_theme_constant_override("margin_top", 20)
+    root.add_theme_constant_override("margin_left",24)
+    root.add_theme_constant_override("margin_top",20)
     add_child(root)
 
-    var v := VBoxContainer.new()
+    var v: VBoxContainer = VBoxContainer.new()
     root.add_child(v)
 
-    var title := Label.new()
+    var title: Label = Label.new()
     title.text = "FOREST CIRCUIT KART 3D"
-    title.add_theme_font_size_override("font_size", 22)
+    title.add_theme_font_size_override("font_size",22)
     v.add_child(title)
 
     speed_label = Label.new()
@@ -29,18 +33,35 @@ func _ready() -> void:
     drift_bar = ProgressBar.new()
     drift_bar.min_value = 0
     drift_bar.max_value = 100
-    drift_bar.custom_minimum_size = Vector2(260, 20)
+    drift_bar.custom_minimum_size = Vector2(260,20)
 
     v.add_child(speed_label)
     v.add_child(lap_label)
     v.add_child(n2o_label)
     v.add_child(status_label)
     v.add_child(drift_bar)
-    update_values(0, 1, 0, 0.0, false)
+
+    var lobby_button: Button = Button.new()
+    lobby_button.text = "로비로"
+    lobby_button.anchor_left = 1.0
+    lobby_button.anchor_right = 1.0
+    lobby_button.anchor_top = 0.0
+    lobby_button.anchor_bottom = 0.0
+    lobby_button.offset_left = -150.0
+    lobby_button.offset_right = -24.0
+    lobby_button.offset_top = 20.0
+    lobby_button.offset_bottom = 64.0
+    lobby_button.pressed.connect(_on_lobby_pressed)
+    add_child(lobby_button)
+
+    update_values(0,1,0,0.0,false)
+
+func _on_lobby_pressed() -> void:
+    lobby_requested.emit()
 
 func update_values(speed: int, lap: int, n2o: int, drift: float, offroad: bool) -> void:
     speed_label.text = "SPEED  %d km/h" % speed
-    lap_label.text = "LAP    %d / 3" % lap
+    lap_label.text = "LAP    %d / 3" % min(lap,3)
     n2o_label.text = "N2O    %d" % n2o
     drift_bar.value = drift
     status_label.text = "OFF ROAD - 감속" if offroad else "TRACK"
