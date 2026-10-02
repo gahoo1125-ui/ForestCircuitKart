@@ -167,6 +167,23 @@ func _build_ui() -> void:
     description_label.custom_minimum_size.y = 42
     center_v.add_child(description_label)
 
+    var start_button: Button = Button.new()
+    start_button.text = "게임 시작"
+    start_button.custom_minimum_size = Vector2(0,64)
+    start_button.add_theme_font_size_override("font_size",24)
+    start_button.tooltip_text = "선택한 카트와 모드로 레이스 시작"
+    var start_style: StyleBoxFlat = StyleBoxFlat.new()
+    start_style.bg_color = Color(0.92,0.58,0.06,0.96)
+    start_style.border_color = Color(1.0,0.82,0.28,1.0)
+    start_style.set_border_width_all(2)
+    start_style.corner_radius_top_left = 10
+    start_style.corner_radius_top_right = 10
+    start_style.corner_radius_bottom_left = 10
+    start_style.corner_radius_bottom_right = 10
+    start_button.add_theme_stylebox_override("normal",start_style)
+    start_button.pressed.connect(_on_start_pressed)
+    center_v.add_child(start_button)
+
     var right_panel: PanelContainer = PanelContainer.new()
     right_panel.custom_minimum_size = Vector2(315,0)
     columns.add_child(right_panel)
@@ -209,13 +226,6 @@ func _build_ui() -> void:
     result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     result_label.add_theme_font_size_override("font_size",16)
     main_v.add_child(result_label)
-
-    var start: Button = Button.new()
-    start.text = "RACE START"
-    start.custom_minimum_size.y = 54
-    start.add_theme_font_size_override("font_size",21)
-    start.pressed.connect(_on_start_pressed)
-    main_v.add_child(start)
 
 func _build_preview_world() -> void:
     var env_node: WorldEnvironment = WorldEnvironment.new()
