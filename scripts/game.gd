@@ -17,6 +17,8 @@ var selected_kart: String = "rookie"
 var selected_mode: String = "cpu"
 var kart_data: Dictionary = {}
 var race_camera: Camera3D
+var podium_layer: CanvasLayer
+var race_result_open: bool = false
 
 var race_karts: Array[KartController] = []
 var cpu_karts: Array[KartController] = []
@@ -441,17 +443,215 @@ func _apply_remote_state(peer_id: int, pos: Vector3, yaw: float, speed_value: fl
         kart.set_remote_state(pos,yaw,speed_value,lap_value)
 
 func _finish(total_time: float) -> void:
-    if result_label:
-        result_label.text = "FINISH! %.2f초" % total_time
-    _return_to_lobby()
+    if race_result_open:
+        return
+    race_result_open = true
+
+    for kart in race_karts:
+        if kart and is_instance_valid(kart):
+            kart.set_physics_process(false)
+
+    _show_podium(total_time)
+
+func _show_podium(total_time: float) -> void:
+    if podium_layer and is_instance_valid(podium_layer):
+        podium_layer.queue_free()
+
+    var ranked: Array[Dictionary] = _get_ranked_entries()
+
+    podium_layer = CanvasLayer.new()
+    podium_layer.layer = 60
+    add_child(podium_layer)
+
+    var root: Control = Control.new()
+    root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    podium_layer.add_child(root)
+
+    var dim: ColorRect = ColorRect.new()
+    dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    dim.color = Color(0.008,0.010,0.018,0.94)
+    root.add_child(dim)
+
+    var center: CenterContainer = CenterContainer.new()
+    center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    root.add_child(center)
+
+    var main_v: VBoxContainer = VBoxContainer.new()
+    main_v.custom_minimum_size = Vector2(980,620)
+    main_v.add_theme_constant_override("separation",18)
+    center.add_child(main_v)
+
+    var title: Label = Label.new()
+    title.text = "RACE RESULT"
+    title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    title.add_theme_font_size_override("font_size",38)
+    main_v.add_child(title)
+
+    var subtitle: Label = Label.new()
+    subtitle.text = "TOP 3 AWARDS  ·  기록 %.2f초" % total_time
+    subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    subtitle.add_theme_font_size_override("font_size",18)
+    subtitle.modulate = Color(0.80,0.82,0.88)
+    main_v.add_child(subtitle)
+
+    var podium_row: HBoxContainer = HBoxContainer.new()
+    podium_row.alignment = BoxContainer.ALIGNMENT_CENTER
+    podium_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    podium_row.add_theme_constant_override("separation",20)
+    main_v.add_child(podium_row)
+
+    var order: Array[int] = [1,0,2]
+    for rank_index in order:
+        if rank_index >= ranked.size():
+            continue
+        var entry: Dictionary = ranked[rank_index]
+        var rank_number: int = rank_index + 1
+        var name_value: String = str(entry.get("name","UNKNOWN"))
+        var is_player: bool = entry.get("kart",null) == player
+        var card: PanelContainer = _make_podium_card(rank_number,name_value,is_player)
+        podium_row.add_child(card)
+
+    var note: Label = Label.new()
+    note.text = "1위 · 2위 · 3위까지 시상"
+    note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    note.add_theme_font_size_override("font_size",17)
+    main_v.add_child(note)
+
+    var lobby_button: Button = Button.new()
+    lobby_button.text = "로비로 돌아가기"
+    lobby_button.custom_minimum_size = Vector2(360,58)
+    lobby_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+    lobby_button.add_theme_font_size_override("font_size",21)
+    lobby_button.pressed.connect(_return_to_lobby)
+    main_v.add_child(lobby_button)
+
+func _make_podium_card(rank_number: int, name_value: String, is_player: bool) -> PanelContainer:
+    var card: PanelContainer = PanelContainer.new()
+    var heights: Dictionary = {1:300,2:245,3:215}
+    card.custom_minimum_size = Vector2(285,float(heights.get(rank_number,220)))
+
+    var style: StyleBoxFlat = StyleBoxFlat.new()
+    if rank_number == 1:
+        style.bg_color = Color(0.28,0.20,0.035,0.96)
+        style.border_color = Color(1.0,0.78,0.16,1.0)
+    elif rank_number == 2:
+        style.bg_color = Color(0.16,0.18,0.21,0.96)
+        style.border_color = Color(0.78,0.84,0.90,1.0)
+    else:
+        style.bg_color = Color(0.23,0.12,0.055,0.96)
+        style.border_color = Color(0.83,0.46,0.20,1.0)
+    style.set_border_width_all(3)
+    style.corner_radius_top_left = 14
+    style.corner_radius_top_right = 14
+    style.corner_radius_bottom_left = 14
+    style.corner_radius_bottom_right = 14
+    card.add_theme_stylebox_override("panel",style)
+
+    var margin: MarginContainer = MarginContainer.new()
+    margin.add_theme_constant_override("margin_left",16)
+    margin.add_theme_constant_override("margin_right",16)
+    margin.add_theme_constant_override("margin_top",18)
+    margin.add_theme_constant_override("margin_bottom",18)
+    card.add_child(margin)
+
+    var v: VBoxContainer = VBoxContainer.new()
+    v.alignment = BoxContainer.ALIGNMENT_CENTER
+    v.add_theme_constant_override("separation",10)
+    margin.add_child(v)
+
+    var medal: Label = Label.new()
+    medal.text = "%d위" % rank_number
+    medal.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    medal.add_theme_font_size_override("font_size",34 if rank_number == 1 else 28)
+    v.add_child(medal)
+
+    var award: Label = Label.new()
+    award.text = "CHAMPION" if rank_number == 1 else ("SILVER" if rank_number == 2 else "BRONZE")
+    award.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    award.add_theme_font_size_override("font_size",18)
+    v.add_child(award)
+
+    var name_label: Label = Label.new()
+    name_label.text = name_value
+    name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    name_label.add_theme_font_size_override("font_size",18)
+    v.add_child(name_label)
+
+    if is_player:
+        var you: Label = Label.new()
+        you.text = "내 카트"
+        you.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        you.add_theme_font_size_override("font_size",16)
+        you.modulate = Color(1.0,0.82,0.28)
+        v.add_child(you)
+
+    var pedestal: ColorRect = ColorRect.new()
+    pedestal.custom_minimum_size = Vector2(0,70 if rank_number == 1 else (55 if rank_number == 2 else 42))
+    if rank_number == 1:
+        pedestal.color = Color(0.95,0.67,0.10,0.72)
+    elif rank_number == 2:
+        pedestal.color = Color(0.68,0.72,0.78,0.72)
+    else:
+        pedestal.color = Color(0.66,0.32,0.12,0.72)
+    v.add_child(pedestal)
+
+    return card
+
+func _get_ranked_entries() -> Array[Dictionary]:
+    var entries: Array[Dictionary] = []
+    if track == null or track.sample_points.is_empty():
+        return entries
+
+    var n: int = track.sample_points.size()
+    for kart in race_karts:
+        if kart == null or not is_instance_valid(kart):
+            continue
+
+        var info: Dictionary = track.nearest_track_info(kart.global_position)
+        var idx: int = int(info.get("index",0))
+        var adjusted_idx: int = idx
+
+        if kart.lap <= 1 and kart.next_checkpoint == 0 and idx > int(float(n) * 0.75):
+            adjusted_idx = idx - n
+
+        var progress: int = (max(kart.lap,1) - 1) * n + adjusted_idx
+        if kart.finished:
+            progress += n * 4
+
+        var display_name: String = kart.kart_id
+        if kart_data.has(kart.kart_id):
+            display_name = str((kart_data[kart.kart_id] as Dictionary).get("display_name",kart.kart_id))
+
+        entries.append({
+            "kart":kart,
+            "name":display_name,
+            "progress":progress
+        })
+
+    for i in range(1,entries.size()):
+        var key: Dictionary = entries[i]
+        var j: int = i - 1
+        while j >= 0 and int(entries[j]["progress"]) < int(key["progress"]):
+            entries[j + 1] = entries[j]
+            j -= 1
+        entries[j + 1] = key
+
+    return entries
 
 func _return_to_lobby() -> void:
+    race_result_open = false
     _clear_race(true)
     menu_layer.visible = true
     if result_label and result_label.text.is_empty():
         result_label.text = "로비로 돌아왔습니다."
 
 func _clear_race(disconnect_network: bool) -> void:
+    if podium_layer and is_instance_valid(podium_layer):
+        podium_layer.queue_free()
+    podium_layer = null
+    race_result_open = false
+
     if hud and is_instance_valid(hud):
         hud.queue_free()
     hud = null
