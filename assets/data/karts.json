@@ -1,0 +1,11 @@
+{
+  "rookie":{"display_name":"루키 터보","max_speed":36.0,"acceleration":19.0,"steer_rate":1.55,"grip":6.8,"drift_charge_rate":46.0,"boost_speed":44.0,"boost_duration":1.35,"max_n2o":2,"color":[0.92,0.18,0.22],"menu_description":"기본 밸런스형"},
+  "koala_sprinter":{"display_name":"코알라 스프린터","max_speed":37.0,"acceleration":20.0,"steer_rate":1.65,"grip":7.2,"drift_charge_rate":50.0,"boost_speed":45.0,"boost_duration":1.3,"max_n2o":2,"color":[0.35,0.72,0.48],"menu_description":"입문 안정형"},
+  "bamboo_koala_gt":{"display_name":"대나무 코알라 GT","max_speed":38.0,"acceleration":19.5,"steer_rate":1.58,"grip":7.8,"drift_charge_rate":48.0,"boost_speed":46.0,"boost_duration":1.4,"max_n2o":2,"color":[0.18,0.52,0.28],"menu_description":"고접지 GT형"},
+  "koala_drift_x":{"display_name":"코알라 드리프트 X","max_speed":39.0,"acceleration":20.0,"steer_rate":1.94,"grip":5.4,"drift_charge_rate":76.0,"boost_speed":48.0,"boost_duration":1.48,"max_n2o":2,"color":[0.56,0.3,0.88],"menu_description":"드리프트 특화"},
+  "phantom":{"display_name":"블루 팬텀","max_speed":39.0,"acceleration":19.5,"steer_rate":1.8,"grip":5.8,"drift_charge_rate":67.0,"boost_speed":47.0,"boost_duration":1.45,"max_n2o":2,"color":[0.12,0.42,0.95],"menu_description":"고조향 드리프트형"},
+  "yanghyunhoo_turbo":{"display_name":"양현후 터보 R","max_speed":40.0,"acceleration":23.0,"steer_rate":1.68,"grip":6.2,"drift_charge_rate":58.0,"boost_speed":49.0,"boost_duration":1.38,"max_n2o":2,"color":[0.92,0.28,0.18],"menu_description":"가속 특화"},
+  "yanghyunhoo_blaze":{"display_name":"양현후 블레이즈 N2","max_speed":40.5,"acceleration":21.0,"steer_rate":1.62,"grip":5.9,"drift_charge_rate":62.0,"boost_speed":52.0,"boost_duration":1.72,"max_n2o":2,"color":[0.96,0.54,0.1],"menu_description":"N2O 직선 특화"},
+  "koala_hyunhoo_mix":{"display_name":"코알라 × 양현후 하이브리드","max_speed":41.0,"acceleration":21.5,"steer_rate":1.77,"grip":6.5,"drift_charge_rate":64.0,"boost_speed":50.0,"boost_duration":1.55,"max_n2o":2,"color":[0.24,0.62,0.76],"menu_description":"올라운더"},
+  "gold":{"display_name":"골드 익스피어리언스 엠페럴 크리스티아누 모차르트 김연준","max_speed":46.0,"acceleration":24.0,"steer_rate":1.88,"grip":6.2,"drift_charge_rate":78.0,"boost_speed":58.0,"boost_duration":2.0,"max_n2o":3,"color":[0.84,0.64,0.15],"menu_description":"종결급 최고성능"}
+}
