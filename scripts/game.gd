@@ -18,7 +18,13 @@ var selected_mode: String = "cpu"
 var kart_data: Dictionary = {}
 var race_camera: Camera3D
 var podium_layer: CanvasLayer
+var finish_countdown_layer: CanvasLayer
+var finish_countdown_label: Label
 var race_result_open: bool = false
+var finish_countdown_active: bool = false
+var finish_countdown_left: float = 0.0
+var finished_order: Array[KartController] = []
+var finished_times: Dictionary = {}
 
 var race_karts: Array[KartController] = []
 var cpu_karts: Array[KartController] = []
@@ -42,6 +48,13 @@ func _ready() -> void:
     _build_menu()
 
 func _process(delta: float) -> void:
+    if finish_countdown_active:
+        finish_countdown_left = max(0.0,finish_countdown_left - delta)
+        if finish_countdown_label:
+            finish_countdown_label.text = "FINISH WINDOW  %.1f" % finish_countdown_left
+        if finish_countdown_left <= 0.0:
+            _finalize_race_after_countdown()
+
     if hud and is_instance_valid(hud) and track:
         hud.update_rankings(race_karts,track,kart_data,player)
 
@@ -223,6 +236,7 @@ func _spawn_kart(id: String, mode: String, spawn_index: int, lane_offset: float)
     add_child(kart)
     kart.setup(id,track,mode,spawn_index,lane_offset)
     race_karts.append(kart)
+    kart.race_finished.connect(_on_kart_finished.bind(kart))
     return kart
 
 func _create_hud(target: KartController) -> void:
@@ -237,8 +251,6 @@ func _create_hud(target: KartController) -> void:
 func _start_cpu_mode() -> void:
     menu_layer.visible = false
     player = _spawn_kart(selected_kart,"player1",0,-2.8)
-    player.race_finished.connect(_finish)
-
     for i in range(5):
         var cpu_id: String = kart_order[(i + 1) % kart_order.size()]
         var lane: float = -4.5 + float(i % 3) * 4.5
@@ -252,8 +264,6 @@ func _start_split_mode() -> void:
     menu_layer.visible = false
     player = _spawn_kart(selected_kart,"player1",0,-3.0)
     player2 = _spawn_kart("koala_hyunhoo_mix","player2",0,3.0)
-    player.race_finished.connect(_finish)
-    player2.race_finished.connect(_finish)
     _build_split_screen()
     _create_hud(player)
 
@@ -366,7 +376,6 @@ func _spawn_network_kart_local(peer_id: int, id: String) -> void:
 
     if peer_id == local_id:
         player = kart
-        player.race_finished.connect(_finish)
         _create_hud(player)
         _snap_main_camera(player)
 
@@ -442,16 +451,88 @@ func _apply_remote_state(peer_id: int, pos: Vector3, yaw: float, speed_value: fl
     if kart:
         kart.set_remote_state(pos,yaw,speed_value,lap_value)
 
-func _finish(total_time: float) -> void:
+func _on_kart_finished(total_time: float, kart: KartController) -> void:
     if race_result_open:
         return
+    if kart == null or not is_instance_valid(kart):
+        return
+    if finished_order.has(kart):
+        return
+
+    finished_order.append(kart)
+    finished_times[kart.get_instance_id()] = total_time
+
+    # First finisher opens a 10-second grace period for everybody else.
+    if not finish_countdown_active:
+        finish_countdown_active = true
+        finish_countdown_left = 10.0
+        _show_finish_countdown()
+
+    # If everyone has already finished, end immediately.
+    var active_count: int = 0
+    for race_kart in race_karts:
+        if race_kart and is_instance_valid(race_kart):
+            active_count += 1
+    if finished_order.size() >= active_count:
+        _finalize_race_after_countdown()
+
+func _show_finish_countdown() -> void:
+    if finish_countdown_layer and is_instance_valid(finish_countdown_layer):
+        finish_countdown_layer.queue_free()
+
+    finish_countdown_layer = CanvasLayer.new()
+    finish_countdown_layer.layer = 55
+    add_child(finish_countdown_layer)
+
+    var panel: PanelContainer = PanelContainer.new()
+    panel.anchor_left = 0.5
+    panel.anchor_right = 0.5
+    panel.anchor_top = 0.0
+    panel.anchor_bottom = 0.0
+    panel.offset_left = -190.0
+    panel.offset_right = 190.0
+    panel.offset_top = 220.0
+    panel.offset_bottom = 290.0
+    finish_countdown_layer.add_child(panel)
+
+    var style: StyleBoxFlat = StyleBoxFlat.new()
+    style.bg_color = Color(0.03,0.035,0.05,0.94)
+    style.border_color = Color(1.0,0.34,0.12,1.0)
+    style.set_border_width_all(3)
+    style.corner_radius_top_left = 10
+    style.corner_radius_top_right = 10
+    style.corner_radius_bottom_left = 10
+    style.corner_radius_bottom_right = 10
+    panel.add_theme_stylebox_override("panel",style)
+
+    finish_countdown_label = Label.new()
+    finish_countdown_label.text = "FINISH WINDOW  10.0"
+    finish_countdown_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    finish_countdown_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    finish_countdown_label.add_theme_font_size_override("font_size",24)
+    panel.add_child(finish_countdown_label)
+
+func _finalize_race_after_countdown() -> void:
+    if race_result_open:
+        return
+
+    finish_countdown_active = false
+    if finish_countdown_layer and is_instance_valid(finish_countdown_layer):
+        finish_countdown_layer.queue_free()
+    finish_countdown_layer = null
+    finish_countdown_label = null
+
     race_result_open = true
 
+    # Everybody who failed to cross during the grace period is eliminated.
     for kart in race_karts:
         if kart and is_instance_valid(kart):
             kart.set_physics_process(false)
 
-    _show_podium(total_time)
+    var first_time: float = 0.0
+    if not finished_order.is_empty():
+        first_time = float(finished_times.get(finished_order[0].get_instance_id(),0.0))
+    _show_podium(first_time)
 
 func _show_podium(total_time: float) -> void:
     if podium_layer and is_instance_valid(podium_layer):
@@ -516,6 +597,16 @@ func _show_podium(total_time: float) -> void:
     note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     note.add_theme_font_size_override("font_size",17)
     main_v.add_child(note)
+
+    var eliminated: Array[String] = _get_eliminated_names()
+    if not eliminated.is_empty():
+        var dnf: Label = Label.new()
+        dnf.text = "탈락(DNF): " + ", ".join(eliminated)
+        dnf.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        dnf.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        dnf.modulate = Color(1.0,0.45,0.38)
+        dnf.add_theme_font_size_override("font_size",15)
+        main_v.add_child(dnf)
 
     var lobby_button: Button = Button.new()
     lobby_button.text = "로비로 돌아가기"
@@ -600,44 +691,33 @@ func _make_podium_card(rank_number: int, name_value: String, is_player: bool) ->
 
 func _get_ranked_entries() -> Array[Dictionary]:
     var entries: Array[Dictionary] = []
-    if track == null or track.sample_points.is_empty():
-        return entries
 
-    var n: int = track.sample_points.size()
-    for kart in race_karts:
+    for kart in finished_order:
         if kart == null or not is_instance_valid(kart):
             continue
-
-        var info: Dictionary = track.nearest_track_info(kart.global_position)
-        var idx: int = int(info.get("index",0))
-        var adjusted_idx: int = idx
-
-        if kart.lap <= 1 and kart.next_checkpoint == 0 and idx > int(float(n) * 0.75):
-            adjusted_idx = idx - n
-
-        var progress: int = (max(kart.lap,1) - 1) * n + adjusted_idx
-        if kart.finished:
-            progress += n * 4
-
         var display_name: String = kart.kart_id
         if kart_data.has(kart.kart_id):
             display_name = str((kart_data[kart.kart_id] as Dictionary).get("display_name",kart.kart_id))
-
         entries.append({
             "kart":kart,
             "name":display_name,
-            "progress":progress
+            "time":float(finished_times.get(kart.get_instance_id(),0.0))
         })
 
-    for i in range(1,entries.size()):
-        var key: Dictionary = entries[i]
-        var j: int = i - 1
-        while j >= 0 and int(entries[j]["progress"]) < int(key["progress"]):
-            entries[j + 1] = entries[j]
-            j -= 1
-        entries[j + 1] = key
-
     return entries
+
+func _get_eliminated_names() -> Array[String]:
+    var names: Array[String] = []
+    for kart in race_karts:
+        if kart == null or not is_instance_valid(kart):
+            continue
+        if finished_order.has(kart):
+            continue
+        var display_name: String = kart.kart_id
+        if kart_data.has(kart.kart_id):
+            display_name = str((kart_data[kart.kart_id] as Dictionary).get("display_name",kart.kart_id))
+        names.append(display_name)
+    return names
 
 func _return_to_lobby() -> void:
     race_result_open = false
@@ -647,6 +727,16 @@ func _return_to_lobby() -> void:
         result_label.text = "로비로 돌아왔습니다."
 
 func _clear_race(disconnect_network: bool) -> void:
+    finish_countdown_active = false
+    finish_countdown_left = 0.0
+    finished_order.clear()
+    finished_times.clear()
+
+    if finish_countdown_layer and is_instance_valid(finish_countdown_layer):
+        finish_countdown_layer.queue_free()
+    finish_countdown_layer = null
+    finish_countdown_label = null
+
     if podium_layer and is_instance_valid(podium_layer):
         podium_layer.queue_free()
     podium_layer = null
