@@ -40,6 +40,9 @@ func _ready() -> void:
     _build_menu()
 
 func _process(delta: float) -> void:
+    if hud and is_instance_valid(hud) and track:
+        hud.update_rankings(race_karts,track,kart_data,player)
+
     if selected_mode == "split" and split_cam1 and split_cam2 and player and player2:
         _follow_camera(split_cam1,player,delta)
         _follow_camera(split_cam2,player2,delta)
