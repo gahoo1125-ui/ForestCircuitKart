@@ -8,6 +8,7 @@ var result_label: Label
 var selected_label: Label
 var selected_kart := "rookie"
 var kart_data: Dictionary = {}
+var race_camera: Camera3D
 
 var kart_order := ["rookie","koala_sprinter","bamboo_koala_gt","koala_drift_x","phantom","yanghyunhoo_turbo","yanghyunhoo_blaze","koala_hyunhoo_mix","gold"]
 
@@ -16,6 +17,21 @@ func _ready() -> void:
     _load_data()
     _build_world()
     _build_menu()
+
+func _process(delta: float) -> void:
+    if race_camera == null:
+        return
+
+    if player and is_instance_valid(player) and not player.finished:
+        var forward := -player.global_transform.basis.z.normalized()
+        var target := player.global_position + forward * 3.2 + Vector3.UP * 1.0
+        var desired := player.global_position - forward * 7.5 + Vector3.UP * 3.6
+        race_camera.global_position = race_camera.global_position.lerp(desired, clamp(delta * 7.0, 0.0, 1.0))
+        race_camera.look_at(target, Vector3.UP)
+    elif track and track.sample_points.size() > 0:
+        var menu_pos := track.sample_points[0] + Vector3(18.0, 18.0, 22.0)
+        race_camera.global_position = race_camera.global_position.lerp(menu_pos, clamp(delta * 3.0, 0.0, 1.0))
+        race_camera.look_at(track.sample_points[0] + Vector3.UP * 1.0, Vector3.UP)
 
 func _add_key(action: StringName, keycode: Key) -> void:
     if not InputMap.has_action(action):
@@ -40,16 +56,16 @@ func _build_world() -> void:
     var env_node := WorldEnvironment.new()
     var env := Environment.new()
     env.background_mode = Environment.BG_COLOR
-    env.background_color = Color(0.46,0.70,0.86)
+    env.background_color = Color(0.40,0.66,0.88)
     env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-    env.ambient_light_color = Color(0.65,0.72,0.68)
-    env.ambient_light_energy = 0.9
+    env.ambient_light_color = Color(0.72,0.78,0.74)
+    env.ambient_light_energy = 1.15
     env_node.environment = env
     add_child(env_node)
 
     var sun := DirectionalLight3D.new()
     sun.rotation_degrees = Vector3(-50,-30,0)
-    sun.light_energy = 1.4
+    sun.light_energy = 1.6
     sun.shadow_enabled = true
     add_child(sun)
 
@@ -57,11 +73,21 @@ func _build_world() -> void:
     add_child(track)
     track.setup()
 
+    # One permanent main camera for the whole game.
+    race_camera = Camera3D.new()
+    race_camera.name = "MainRaceCamera"
+    race_camera.fov = 72.0
+    race_camera.near = 0.05
+    race_camera.far = 500.0
+    add_child(race_camera)
+    race_camera.global_position = track.sample_points[0] + Vector3(18.0,18.0,22.0)
+    race_camera.look_at(track.sample_points[0] + Vector3.UP, Vector3.UP)
+    race_camera.make_current()
+
 func _build_menu() -> void:
     menu_layer = CanvasLayer.new()
     add_child(menu_layer)
 
-    # Full-window root prevents the menu from being offset when the window is resized.
     var root := Control.new()
     root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     root.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -73,7 +99,6 @@ func _build_menu() -> void:
     shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
     root.add_child(shade)
 
-    # CenterContainer centers the panel using its actual minimum size.
     var center := CenterContainer.new()
     center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -164,6 +189,12 @@ func _start_race() -> void:
     player = KartController.new()
     add_child(player)
     player.setup(selected_kart,track)
+
+    if race_camera:
+        var forward := -player.global_transform.basis.z.normalized()
+        race_camera.global_position = player.global_position - forward * 7.5 + Vector3.UP * 3.6
+        race_camera.look_at(player.global_position + forward * 3.0 + Vector3.UP, Vector3.UP)
+        race_camera.make_current()
 
     hud = RaceHUD.new()
     add_child(hud)
