@@ -8,6 +8,7 @@ var lap_label: Label
 var n2o_label: Label
 var drift_bar: ProgressBar
 var status_label: Label
+var minimap: RaceMiniMap
 
 func _ready() -> void:
     layer = 20
@@ -41,6 +42,18 @@ func _ready() -> void:
     v.add_child(status_label)
     v.add_child(drift_bar)
 
+    minimap = RaceMiniMap.new()
+    minimap.anchor_left = 1.0
+    minimap.anchor_right = 1.0
+    minimap.anchor_top = 0.0
+    minimap.anchor_bottom = 0.0
+    minimap.offset_left = -270.0
+    minimap.offset_right = -24.0
+    minimap.offset_top = 18.0
+    minimap.offset_bottom = 208.0
+    minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    add_child(minimap)
+
     var lobby_button: Button = Button.new()
     lobby_button.text = "로비로"
     lobby_button.anchor_left = 1.0
@@ -49,12 +62,16 @@ func _ready() -> void:
     lobby_button.anchor_bottom = 0.0
     lobby_button.offset_left = -150.0
     lobby_button.offset_right = -24.0
-    lobby_button.offset_top = 20.0
-    lobby_button.offset_bottom = 64.0
+    lobby_button.offset_top = 220.0
+    lobby_button.offset_bottom = 264.0
     lobby_button.pressed.connect(_on_lobby_pressed)
     add_child(lobby_button)
 
     update_values(0,1,0,0.0,false)
+
+func setup_minimap(track_points: Array[Vector3], kart_refs: Array[KartController], focus_kart: KartController) -> void:
+    if minimap:
+        minimap.setup(track_points,kart_refs,focus_kart)
 
 func _on_lobby_pressed() -> void:
     lobby_requested.emit()

@@ -315,6 +315,7 @@ func _create_hud(target: KartController) -> void:
     add_child(hud)
     target.hud_update.connect(hud.update_values)
     hud.lobby_requested.connect(_return_to_lobby)
+    hud.setup_minimap(track.sample_points,race_karts,target)
 
 func _start_cpu_mode() -> void:
     menu_layer.visible = false

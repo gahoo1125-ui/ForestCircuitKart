@@ -127,67 +127,82 @@ func _build_kart() -> void:
 
 func _build_gold_dragon(root: Node3D) -> void:
     var dragon_root: Node3D = Node3D.new()
-    dragon_root.name = "GoldenDragonEmblem"
+    dragon_root.name = "GoldenDragonBodyWrap"
     root.add_child(dragon_root)
 
     var red_mat: StandardMaterial3D = StandardMaterial3D.new()
-    red_mat.albedo_color = Color(0.42,0.025,0.035)
-    red_mat.metallic = 0.65
-    red_mat.roughness = 0.23
+    red_mat.albedo_color = Color(0.38,0.018,0.028)
+    red_mat.metallic = 0.78
+    red_mat.roughness = 0.18
     red_mat.emission_enabled = true
-    red_mat.emission = Color(0.20,0.01,0.015)
+    red_mat.emission = Color(0.18,0.01,0.015)
+    red_mat.emission_energy_multiplier = 1.4
 
     var gold_mat: StandardMaterial3D = StandardMaterial3D.new()
-    gold_mat.albedo_color = Color(1.0,0.72,0.12)
-    gold_mat.metallic = 0.88
-    gold_mat.roughness = 0.16
+    gold_mat.albedo_color = Color(1.0,0.72,0.10)
+    gold_mat.metallic = 0.92
+    gold_mat.roughness = 0.13
     gold_mat.emission_enabled = true
-    gold_mat.emission = Color(0.28,0.12,0.01)
+    gold_mat.emission = Color(0.40,0.17,0.01)
+    gold_mat.emission_energy_multiplier = 1.5
 
-    var path: Array[Vector3] = [
-        Vector3(0.00,0.575,-1.73),
-        Vector3(-0.22,0.59,-1.51),
-        Vector3(0.20,0.60,-1.28),
-        Vector3(-0.18,0.61,-1.04),
-        Vector3(0.18,0.62,-0.80),
-        Vector3(-0.12,0.63,-0.56),
-        Vector3(0.10,0.64,-0.34)
+    var top_path: Array[Vector3] = [
+        Vector3(0.00,0.585,-1.78),
+        Vector3(-0.40,0.60,-1.55),
+        Vector3(0.42,0.61,-1.28),
+        Vector3(-0.46,0.62,-0.98),
+        Vector3(0.44,0.63,-0.68),
+        Vector3(-0.38,0.64,-0.36),
+        Vector3(0.34,0.64,-0.05),
+        Vector3(-0.32,0.62,0.30),
+        Vector3(0.36,0.58,0.68),
+        Vector3(-0.28,0.54,1.05),
+        Vector3(0.00,0.52,1.38)
     ]
+    _add_dragon_wrap_path(dragon_root,top_path,red_mat,0.13,0.040)
 
-    for i in range(path.size() - 1):
-        var a: Vector3 = path[i]
-        var b: Vector3 = path[i + 1]
-        var mid: Vector3 = (a + b) * 0.5
-        var dir: Vector3 = (b - a).normalized()
-        var length: float = a.distance_to(b)
+    for side in [-1.0,1.0]:
+        var s: float = float(side)
+        var side_path: Array[Vector3] = [
+            Vector3(s*0.62,0.50,-1.55),
+            Vector3(s*0.82,0.48,-1.15),
+            Vector3(s*0.72,0.44,-0.72),
+            Vector3(s*0.88,0.42,-0.28),
+            Vector3(s*0.74,0.40,0.18),
+            Vector3(s*0.86,0.39,0.62),
+            Vector3(s*0.68,0.40,1.03)
+        ]
+        _add_dragon_wrap_path(dragon_root,side_path,gold_mat,0.11,0.035)
 
-        var seg: MeshInstance3D = MeshInstance3D.new()
-        var seg_mesh: BoxMesh = BoxMesh.new()
-        seg_mesh.size = Vector3(0.09,0.035,length + 0.025)
-        seg.mesh = seg_mesh
-        seg.position = mid
-        seg.basis = Basis.looking_at(dir,Vector3.UP)
-        seg.material_override = red_mat
-        dragon_root.add_child(seg)
+        for z in [-1.20,-0.78,-0.34,0.12,0.56,0.98]:
+            var scale_mark: MeshInstance3D = MeshInstance3D.new()
+            var scale_mesh: SphereMesh = SphereMesh.new()
+            scale_mesh.radius = 0.085
+            scale_mesh.height = 0.09
+            scale_mark.mesh = scale_mesh
+            scale_mark.scale = Vector3(1.3,0.28,0.8)
+            scale_mark.position = Vector3(s*0.77,0.51,float(z))
+            scale_mark.material_override = red_mat
+            dragon_root.add_child(scale_mark)
 
     var head: MeshInstance3D = MeshInstance3D.new()
     var head_mesh: SphereMesh = SphereMesh.new()
-    head_mesh.radius = 0.16
-    head_mesh.height = 0.24
+    head_mesh.radius = 0.19
+    head_mesh.height = 0.28
     head.mesh = head_mesh
-    head.scale = Vector3(1.18,0.34,1.0)
-    head.position = Vector3(0.0,0.615,-1.84)
+    head.scale = Vector3(1.35,0.40,1.05)
+    head.position = Vector3(0.0,0.63,-1.88)
     head.material_override = red_mat
     dragon_root.add_child(head)
 
-    for horn_x in [-0.13,0.13]:
+    for horn_x in [-0.16,0.16]:
         var horn: MeshInstance3D = MeshInstance3D.new()
         var horn_mesh: CylinderMesh = CylinderMesh.new()
         horn_mesh.top_radius = 0.0
         horn_mesh.bottom_radius = 0.055
-        horn_mesh.height = 0.28
+        horn_mesh.height = 0.31
         horn.mesh = horn_mesh
-        horn.position = Vector3(float(horn_x),0.72,-1.84)
+        horn.position = Vector3(float(horn_x),0.75,-1.87)
         horn.rotation_degrees = Vector3(72,0,0)
         horn.material_override = gold_mat
         dragon_root.add_child(horn)
@@ -195,21 +210,26 @@ func _build_gold_dragon(root: Node3D) -> void:
     for side in [-1.0,1.0]:
         var wing: MeshInstance3D = MeshInstance3D.new()
         var wing_mesh: BoxMesh = BoxMesh.new()
-        wing_mesh.size = Vector3(0.46,0.025,0.09)
+        wing_mesh.size = Vector3(0.72,0.030,0.14)
         wing.mesh = wing_mesh
-        wing.position = Vector3(float(side) * 0.34,0.615,-1.15)
-        wing.rotation_degrees.y = float(side) * 24.0
+        wing.position = Vector3(float(side)*0.48,0.64,-1.12)
+        wing.rotation_degrees.y = float(side)*28.0
         wing.material_override = gold_mat
         dragon_root.add_child(wing)
 
-        var side_mark: MeshInstance3D = MeshInstance3D.new()
-        var side_mesh: BoxMesh = BoxMesh.new()
-        side_mesh.size = Vector3(0.035,0.22,0.72)
-        side_mark.mesh = side_mesh
-        side_mark.position = Vector3(float(side) * 0.87,0.48,-0.48)
-        side_mark.rotation_degrees.z = float(side) * 8.0
-        side_mark.material_override = red_mat
-        dragon_root.add_child(side_mark)
+func _add_dragon_wrap_path(parent: Node3D, path: Array[Vector3], mat: StandardMaterial3D, width: float, height: float) -> void:
+    for i in range(path.size()-1):
+        var a: Vector3 = path[i]
+        var b: Vector3 = path[i+1]
+        var dir: Vector3 = (b-a).normalized()
+        var seg: MeshInstance3D = MeshInstance3D.new()
+        var mesh: BoxMesh = BoxMesh.new()
+        mesh.size = Vector3(width,height,a.distance_to(b)+0.04)
+        seg.mesh = mesh
+        seg.position = (a+b)*0.5
+        seg.basis = Basis.looking_at(dir,Vector3.UP)
+        seg.material_override = mat
+        parent.add_child(seg)
 
 func _build_gold_boost() -> void:
     gold_boost_root = Node3D.new()
