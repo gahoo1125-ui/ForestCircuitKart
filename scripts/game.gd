@@ -60,54 +60,91 @@ func _build_world() -> void:
 func _build_menu() -> void:
     menu_layer = CanvasLayer.new()
     add_child(menu_layer)
+
+    # Full-window root prevents the menu from being offset when the window is resized.
+    var root := Control.new()
+    root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    root.mouse_filter = Control.MOUSE_FILTER_PASS
+    menu_layer.add_child(root)
+
+    var shade := ColorRect.new()
+    shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    shade.color = Color(0.02, 0.04, 0.05, 0.38)
+    shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    root.add_child(shade)
+
+    # CenterContainer centers the panel using its actual minimum size.
+    var center := CenterContainer.new()
+    center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    center.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    root.add_child(center)
+
     var panel := PanelContainer.new()
-    panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-    panel.custom_minimum_size = Vector2(900,620)
-    menu_layer.add_child(panel)
+    panel.custom_minimum_size = Vector2(900, 620)
+    center.add_child(panel)
+
     var margin := MarginContainer.new()
     margin.add_theme_constant_override("margin_left",24)
     margin.add_theme_constant_override("margin_right",24)
     margin.add_theme_constant_override("margin_top",20)
     margin.add_theme_constant_override("margin_bottom",20)
     panel.add_child(margin)
+
     var v := VBoxContainer.new()
     v.add_theme_constant_override("separation",8)
+    v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    v.size_flags_vertical = Control.SIZE_EXPAND_FILL
     margin.add_child(v)
+
     var title := Label.new()
     title.text = "FOREST CIRCUIT KART 3D"
     title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     title.add_theme_font_size_override("font_size",30)
     v.add_child(title)
+
     var info := Label.new()
     info.text = "카트 9종 · 3D 숲 서킷\nWASD/방향키 · Shift 드리프트 · Space/Ctrl N2O · R 복귀"
     info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     v.add_child(info)
+
     selected_label = Label.new()
     selected_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     selected_label.add_theme_font_size_override("font_size",18)
+    selected_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     v.add_child(selected_label)
+
     var scroll := ScrollContainer.new()
     scroll.custom_minimum_size = Vector2(0,400)
+    scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
     v.add_child(scroll)
+
     var grid := GridContainer.new()
     grid.columns = 2
     grid.add_theme_constant_override("h_separation",10)
     grid.add_theme_constant_override("v_separation",10)
     grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     scroll.add_child(grid)
+
     for id in kart_order:
         if kart_data.has(id):
             var e: Dictionary = kart_data[id]
             var b := Button.new()
             b.text = str(e.get("display_name",id)) + "\n" + str(e.get("menu_description",""))
             b.custom_minimum_size = Vector2(410,70)
+            b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
             b.pressed.connect(_select_kart.bind(id))
             grid.add_child(b)
+
     var start := Button.new()
     start.text = "선택한 카트로 레이스 시작"
     start.custom_minimum_size.y = 50
+    start.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     start.pressed.connect(_start_race)
     v.add_child(start)
+
     result_label = Label.new()
     result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     v.add_child(result_label)
@@ -123,9 +160,11 @@ func _start_race() -> void:
         player.queue_free()
     if hud and is_instance_valid(hud):
         hud.queue_free()
+
     player = KartController.new()
     add_child(player)
     player.setup(selected_kart,track)
+
     hud = RaceHUD.new()
     add_child(hud)
     player.hud_update.connect(hud.update_values)
