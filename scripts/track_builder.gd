@@ -1,7 +1,8 @@
 extends Node3D
 class_name TrackBuilder
 
-var road_width: float = 19.5
+var road_width: float = 23.5
+var jump_indices: Array[int] = []
 var sample_points: Array[Vector3] = []
 var sample_tangents: Array[Vector3] = []
 var checkpoint_indices: Array[int] = []
@@ -11,6 +12,7 @@ func setup() -> void:
     _build_ground()
     _build_track()
     _build_scenery()
+    _build_stunt_elements()
     _build_checkpoints()
 
 func _sample_track() -> void:
@@ -65,7 +67,7 @@ func _mat(color: Color, metallic: float = 0.0, roughness: float = 0.9) -> Standa
 func _build_ground() -> void:
     var ground: MeshInstance3D = MeshInstance3D.new()
     var mesh: PlaneMesh = PlaneMesh.new()
-    mesh.size = Vector2(380, 340)
+    mesh.size = Vector2(410, 370)
     ground.mesh = mesh
     ground.material_override = _mat(Color(0.10,0.30,0.10))
     ground.position.y = -0.10
@@ -210,6 +212,109 @@ func _build_scenery() -> void:
             crown.position = base + Vector3.UP * 5.5
             crown.material_override = leaf_mat
             add_child(crown)
+
+func _build_stunt_elements() -> void:
+    jump_indices.clear()
+    if sample_points.is_empty():
+        return
+
+    var n: int = sample_points.size()
+    jump_indices = [
+        int(n * 0.14),
+        int(n * 0.36),
+        int(n * 0.61),
+        int(n * 0.83)
+    ]
+
+    var ramp_mat: StandardMaterial3D = _mat(Color(0.12,0.14,0.18),0.62,0.30)
+    ramp_mat.emission_enabled = true
+    ramp_mat.emission = Color(0.035,0.045,0.07)
+    ramp_mat.emission_energy_multiplier = 1.4
+
+    var edge_mat: StandardMaterial3D = _mat(Color(1.0,0.68,0.08),0.78,0.16)
+    edge_mat.emission_enabled = true
+    edge_mat.emission = Color(1.0,0.38,0.025)
+    edge_mat.emission_energy_multiplier = 2.6
+
+    for ramp_i in range(jump_indices.size()):
+        var idx: int = jump_indices[ramp_i]
+        var p: Vector3 = sample_points[idx]
+        var t: Vector3 = sample_tangents[idx].normalized()
+        var right: Vector3 = Vector3(-t.z,0.0,t.x).normalized()
+
+        var root: Node3D = Node3D.new()
+        root.name = "JumpRamp_%d" % (ramp_i + 1)
+        root.position = p + Vector3.UP * 0.28
+        root.basis = Basis.looking_at(t,Vector3.UP)
+        add_child(root)
+
+        var ramp: MeshInstance3D = MeshInstance3D.new()
+        var ramp_mesh: BoxMesh = BoxMesh.new()
+        ramp_mesh.size = Vector3(road_width * 0.60,0.34,6.8)
+        ramp.mesh = ramp_mesh
+        ramp.position = Vector3(0.0,0.34,0.0)
+        ramp.rotation_degrees.x = -8.0
+        ramp.material_override = ramp_mat
+        root.add_child(ramp)
+
+        for side in [-1.0,1.0]:
+            var edge: MeshInstance3D = MeshInstance3D.new()
+            var edge_mesh: BoxMesh = BoxMesh.new()
+            edge_mesh.size = Vector3(0.16,0.12,6.9)
+            edge.mesh = edge_mesh
+            edge.position = Vector3(float(side) * road_width * 0.29,0.58,0.0)
+            edge.rotation_degrees.x = -8.0
+            edge.material_override = edge_mat
+            root.add_child(edge)
+
+        # Floating landing gate makes the airborne section easy to read.
+        var landing_idx: int = posmod(idx + 16,n)
+        var lp: Vector3 = sample_points[landing_idx]
+        var lt: Vector3 = sample_tangents[landing_idx].normalized()
+        var lr: Vector3 = Vector3(-lt.z,0.0,lt.x).normalized()
+
+        for side in [-1.0,1.0]:
+            var pillar: MeshInstance3D = MeshInstance3D.new()
+            var pillar_mesh: BoxMesh = BoxMesh.new()
+            pillar_mesh.size = Vector3(0.28,5.2,0.28)
+            pillar.mesh = pillar_mesh
+            pillar.position = lp + lr * float(side) * 5.6 + Vector3.UP * 2.6
+            pillar.material_override = edge_mat
+            add_child(pillar)
+
+        var top_gate: MeshInstance3D = MeshInstance3D.new()
+        var top_mesh: BoxMesh = BoxMesh.new()
+        top_mesh.size = Vector3(11.5,0.30,0.30)
+        top_gate.mesh = top_mesh
+        top_gate.position = lp + Vector3.UP * 5.05
+        top_gate.basis = Basis.looking_at(lt,Vector3.UP)
+        top_gate.material_override = edge_mat
+        add_child(top_gate)
+
+    # Two elevated-looking side structures to give the course more vertical character.
+    for frac in [0.25,0.72]:
+        var idx: int = int(float(n) * float(frac))
+        var p: Vector3 = sample_points[idx]
+        var t: Vector3 = sample_tangents[idx].normalized()
+        var right: Vector3 = Vector3(-t.z,0.0,t.x).normalized()
+
+        for side in [-1.0,1.0]:
+            var tower: MeshInstance3D = MeshInstance3D.new()
+            var tower_mesh: BoxMesh = BoxMesh.new()
+            tower_mesh.size = Vector3(3.4,7.0,5.0)
+            tower.mesh = tower_mesh
+            tower.position = p + right * float(side) * (road_width * 0.5 + 6.2) + Vector3.UP * 3.5
+            tower.basis = Basis.looking_at(t,Vector3.UP)
+            tower.material_override = _mat(Color(0.16,0.18,0.22),0.35,0.48)
+            add_child(tower)
+
+func jump_strength_at(track_index: int) -> float:
+    if sample_points.is_empty():
+        return 0.0
+    for i in range(jump_indices.size()):
+        if circular_index_distance(track_index,jump_indices[i]) <= 2:
+            return 9.2 + float(i % 2) * 1.3
+    return 0.0
 
 func _build_checkpoints() -> void:
     checkpoint_indices.clear()

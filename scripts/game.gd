@@ -105,10 +105,10 @@ func _follow_camera(cam: Camera3D, kart: KartController, delta: float) -> void:
 
     var boosting: bool = kart.boost_timer > 0.0
     var forward: Vector3 = -kart.global_transform.basis.z.normalized()
-    var target: Vector3 = kart.global_position + forward * (4.6 if boosting else 3.6) + Vector3.UP * 1.0
+    var target: Vector3 = kart.global_position + forward * (4.8 if boosting else 3.8) + Vector3.UP * 0.78
 
-    var follow_distance: float = 10.4 if boosting else 8.2
-    var follow_height: float = 3.75 if boosting else 4.0
+    var follow_distance: float = 10.6 if boosting else 8.4
+    var follow_height: float = 2.85 if boosting else 3.10
     var desired: Vector3 = kart.global_position - forward * follow_distance + Vector3.UP * follow_height
 
     if boosting:

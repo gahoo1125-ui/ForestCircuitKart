@@ -21,6 +21,9 @@ var started_at: int = 0
 var finished: bool = false
 var was_drifting: bool = false
 var race_locked: bool = false
+var jump_height: float = 0.0
+var jump_velocity: float = 0.0
+var jump_cooldown: float = 0.0
 
 var gold_boost_root: Node3D
 var speed_fx_root: Node3D
@@ -752,6 +755,17 @@ func _physics_process(delta: float) -> void:
     var boost_pressed: bool = bool(input_data["boost"])
     var reset_pressed: bool = bool(input_data["reset"])
 
+    if jump_cooldown > 0.0:
+        jump_cooldown = max(0.0,jump_cooldown-delta)
+
+    var airborne: bool = jump_height > 0.001 or jump_velocity > 0.001
+    if airborne:
+        jump_velocity -= 20.5 * delta
+        jump_height += jump_velocity * delta
+        if jump_height <= 0.0:
+            jump_height = 0.0
+            jump_velocity = 0.0
+
     var smooth_t: float = 1.0 - exp(-7.5 * delta)
     throttle_state = lerp(throttle_state,raw_throttle,smooth_t)
 
@@ -793,6 +807,8 @@ func _physics_process(delta: float) -> void:
     var speed_ratio: float = clamp(abs(forward_speed) / max(1.0,max_speed),0.0,1.0)
     var steer_softener: float = lerp(1.0,0.68,speed_ratio)
     var steer_target: float = steer_input * float(stats.get("steer_rate",1.6)) * steer_softener * (1.35 if drifting else 1.0)
+    if airborne:
+        steer_target *= 0.42
     var steer_smooth: float = 1.0 - exp(-9.0 * delta)
     steer_state = lerp(steer_state,steer_target,steer_smooth)
 
@@ -804,9 +820,14 @@ func _physics_process(delta: float) -> void:
     velocity = velocity.lerp(desired,clamp(grip_value*delta,0.0,1.0))
     velocity.y = 0.0
     move_and_slide()
-    global_position.y = 0.55
+    global_position.y = 0.55 + jump_height
 
     var info: Dictionary = track.nearest_track_info(global_position)
+    var jump_strength: float = track.jump_strength_at(int(info["index"]))
+    if jump_strength > 0.0 and jump_cooldown <= 0.0 and jump_height <= 0.001 and abs(forward_speed) > 10.0:
+        jump_velocity = jump_strength + min(abs(forward_speed) * 0.055,2.4)
+        jump_height = 0.03
+        jump_cooldown = 1.35
     var offroad: bool = float(info["distance"]) > track.road_width * 0.58
     if offroad:
         forward_speed = min(forward_speed,18.0)
@@ -817,6 +838,9 @@ func _physics_process(delta: float) -> void:
         global_transform = track.spawn_transform_at(int(info["index"]),0.0)
         forward_speed = 0.0
         velocity = Vector3.ZERO
+        jump_height = 0.0
+        jump_velocity = 0.0
+        jump_cooldown = 0.6
 
     hud_update.emit(int(abs(forward_speed)*3.6),lap,n2o_count,clamp(drift_charge,0.0,100.0),offroad)
 
