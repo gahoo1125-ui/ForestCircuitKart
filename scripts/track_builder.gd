@@ -227,7 +227,7 @@ func spawn_transform_at(sample_index: int = 0, lane_offset: float = 0.0) -> Tran
     var t: Vector3 = sample_tangents[idx]
     var right: Vector3 = Vector3(-t.z,0.0,t.x)
     p += right * lane_offset
-    return Transform3D(Basis.looking_at(-t,Vector3.UP),p)
+    return Transform3D(Basis.looking_at(t,Vector3.UP),p)
 
 func spawn_transform() -> Transform3D:
     return spawn_transform_at(0,0.0)

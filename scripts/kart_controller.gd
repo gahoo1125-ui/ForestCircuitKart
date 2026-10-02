@@ -20,6 +20,7 @@ var next_checkpoint: int = 0
 var started_at: int = 0
 var finished: bool = false
 var was_drifting: bool = false
+var race_locked: bool = false
 
 var gold_boost_root: Node3D
 var speed_fx_root: Node3D
@@ -47,6 +48,22 @@ func setup(id: String, track_ref: TrackBuilder, mode: String = "player1", spawn_
     remote_position = global_position
     remote_yaw = rotation.y
     started_at = Time.get_ticks_msec()
+func set_race_locked(value: bool) -> void:
+    race_locked = value
+    if value:
+        forward_speed = 0.0
+        velocity = Vector3.ZERO
+        throttle_state = 0.0
+
+func mark_race_started() -> void:
+    started_at = Time.get_ticks_msec()
+
+func apply_start_boost(power: float = 1.0) -> void:
+    var p: float = clamp(power,0.5,1.4)
+    var base_speed: float = float(stats.get("max_speed",36.0))
+    forward_speed = max(forward_speed,base_speed * (0.48 + 0.08 * p))
+    boost_timer = max(boost_timer,1.05 + 0.35 * p)
+
 
 func setup_preview(id: String) -> void:
     kart_id = id
@@ -640,6 +657,12 @@ func _cpu_controls() -> Dictionary:
 
 func _physics_process(delta: float) -> void:
     if finished or track == null:
+        return
+
+    if race_locked:
+        forward_speed = 0.0
+        velocity = Vector3.ZERO
+        hud_update.emit(0,lap,n2o_count,clamp(drift_charge,0.0,100.0),false)
         return
 
     if control_mode == "remote":

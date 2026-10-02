@@ -26,6 +26,19 @@ var finish_countdown_left: float = 0.0
 var finished_order: Array[KartController] = []
 var finished_times: Dictionary = {}
 
+var start_light_layer: CanvasLayer
+var start_light_label: Label
+var start_red: ColorRect
+var start_yellow: ColorRect
+var start_green: ColorRect
+var start_countdown_active: bool = false
+var start_countdown_left: float = 0.0
+var start_green_display_left: float = 0.0
+var start_boost_p1: bool = false
+var start_boost_p2: bool = false
+var start_early_p1: bool = false
+var start_early_p2: bool = false
+
 var race_karts: Array[KartController] = []
 var cpu_karts: Array[KartController] = []
 
@@ -48,6 +61,13 @@ func _ready() -> void:
     _build_menu()
 
 func _process(delta: float) -> void:
+    if start_countdown_active:
+        _update_start_sequence(delta)
+    elif start_green_display_left > 0.0:
+        start_green_display_left = max(0.0,start_green_display_left-delta)
+        if start_green_display_left <= 0.0:
+            _hide_start_lights()
+
     if finish_countdown_active:
         finish_countdown_left = max(0.0,finish_countdown_left - delta)
         if finish_countdown_label:
@@ -235,6 +255,7 @@ func _spawn_kart(id: String, mode: String, spawn_index: int, lane_offset: float)
     var kart: KartController = KartController.new()
     add_child(kart)
     kart.setup(id,track,mode,spawn_index,lane_offset)
+    kart.set_race_locked(true)
     race_karts.append(kart)
     kart.race_finished.connect(_on_kart_finished.bind(kart))
     return kart
@@ -259,6 +280,7 @@ func _start_cpu_mode() -> void:
 
     _create_hud(player)
     _snap_main_camera(player)
+    _begin_start_sequence()
 
 func _start_split_mode() -> void:
     menu_layer.visible = false
@@ -266,6 +288,7 @@ func _start_split_mode() -> void:
     player2 = _spawn_kart("koala_hyunhoo_mix","player2",0,3.0)
     _build_split_screen()
     _create_hud(player)
+    _begin_start_sequence()
 
 func _build_split_screen() -> void:
     split_layer = CanvasLayer.new()
@@ -319,6 +342,159 @@ func _build_split_screen() -> void:
 
     split_cam1.global_position = player.global_position + Vector3(0,4,8)
     split_cam2.global_position = player2.global_position + Vector3(0,4,8)
+
+func _begin_start_sequence() -> void:
+    if race_karts.is_empty():
+        return
+
+    start_countdown_active = true
+    start_countdown_left = 3.0
+    start_green_display_left = 0.0
+    start_boost_p1 = false
+    start_boost_p2 = false
+    start_early_p1 = false
+    start_early_p2 = false
+
+    for kart in race_karts:
+        if kart and is_instance_valid(kart):
+            kart.set_race_locked(true)
+
+    _show_start_lights()
+    _set_start_light_phase("red","READY")
+
+func _show_start_lights() -> void:
+    if start_light_layer and is_instance_valid(start_light_layer):
+        start_light_layer.queue_free()
+
+    start_light_layer = CanvasLayer.new()
+    start_light_layer.layer = 58
+    add_child(start_light_layer)
+
+    var panel: PanelContainer = PanelContainer.new()
+    panel.anchor_left = 0.5
+    panel.anchor_right = 0.5
+    panel.anchor_top = 0.0
+    panel.anchor_bottom = 0.0
+    panel.offset_left = -190.0
+    panel.offset_right = 190.0
+    panel.offset_top = 38.0
+    panel.offset_bottom = 162.0
+    start_light_layer.add_child(panel)
+
+    var style: StyleBoxFlat = StyleBoxFlat.new()
+    style.bg_color = Color(0.015,0.018,0.025,0.95)
+    style.border_color = Color(0.38,0.40,0.45,1.0)
+    style.set_border_width_all(2)
+    style.corner_radius_top_left = 12
+    style.corner_radius_top_right = 12
+    style.corner_radius_bottom_left = 12
+    style.corner_radius_bottom_right = 12
+    panel.add_theme_stylebox_override("panel",style)
+
+    var v: VBoxContainer = VBoxContainer.new()
+    v.alignment = BoxContainer.ALIGNMENT_CENTER
+    v.add_theme_constant_override("separation",6)
+    panel.add_child(v)
+
+    var row: HBoxContainer = HBoxContainer.new()
+    row.alignment = BoxContainer.ALIGNMENT_CENTER
+    row.add_theme_constant_override("separation",18)
+    v.add_child(row)
+
+    start_red = ColorRect.new()
+    start_red.custom_minimum_size = Vector2(72,50)
+    row.add_child(start_red)
+
+    start_yellow = ColorRect.new()
+    start_yellow.custom_minimum_size = Vector2(72,50)
+    row.add_child(start_yellow)
+
+    start_green = ColorRect.new()
+    start_green.custom_minimum_size = Vector2(72,50)
+    row.add_child(start_green)
+
+    start_light_label = Label.new()
+    start_light_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    start_light_label.add_theme_font_size_override("font_size",22)
+    v.add_child(start_light_label)
+
+func _set_start_light_phase(phase: String, message: String) -> void:
+    if start_red == null or start_yellow == null or start_green == null:
+        return
+    start_red.color = Color(0.22,0.04,0.04)
+    start_yellow.color = Color(0.23,0.19,0.04)
+    start_green.color = Color(0.04,0.20,0.07)
+
+    if phase == "red":
+        start_red.color = Color(1.0,0.09,0.07)
+    elif phase == "yellow":
+        start_yellow.color = Color(1.0,0.78,0.05)
+    elif phase == "green":
+        start_green.color = Color(0.08,1.0,0.28)
+
+    if start_light_label:
+        start_light_label.text = message
+
+func _update_start_sequence(delta: float) -> void:
+    # Sweet spot: press accelerate during the final 0.45 sec of yellow.
+    if player and is_instance_valid(player) and Input.is_action_just_pressed("accelerate"):
+        if start_countdown_left <= 1.45 and start_countdown_left > 1.0:
+            start_boost_p1 = true
+            start_early_p1 = false
+        elif start_countdown_left > 1.45:
+            start_early_p1 = true
+            start_boost_p1 = false
+
+    if player2 and is_instance_valid(player2) and Input.is_action_just_pressed("p2_accelerate"):
+        if start_countdown_left <= 1.45 and start_countdown_left > 1.0:
+            start_boost_p2 = true
+            start_early_p2 = false
+        elif start_countdown_left > 1.45:
+            start_early_p2 = true
+            start_boost_p2 = false
+
+    start_countdown_left = max(0.0,start_countdown_left-delta)
+
+    if start_countdown_left > 2.0:
+        _set_start_light_phase("red","READY")
+    elif start_countdown_left > 1.0:
+        var hint: String = "YELLOW"
+        if start_countdown_left <= 1.45:
+            hint = "YELLOW · 지금 가속!"
+        _set_start_light_phase("yellow",hint)
+    else:
+        _start_green_go()
+
+func _start_green_go() -> void:
+    if not start_countdown_active:
+        return
+
+    start_countdown_active = false
+    start_green_display_left = 0.95
+
+    var boost_text: String = "GO!"
+    for kart in race_karts:
+        if kart and is_instance_valid(kart):
+            kart.set_race_locked(false)
+            kart.mark_race_started()
+
+    if player and is_instance_valid(player) and start_boost_p1 and not start_early_p1:
+        player.apply_start_boost(1.0)
+        boost_text = "GO!  START BOOST!"
+
+    if player2 and is_instance_valid(player2) and start_boost_p2 and not start_early_p2:
+        player2.apply_start_boost(1.0)
+
+    _set_start_light_phase("green",boost_text)
+
+func _hide_start_lights() -> void:
+    if start_light_layer and is_instance_valid(start_light_layer):
+        start_light_layer.queue_free()
+    start_light_layer = null
+    start_light_label = null
+    start_red = null
+    start_yellow = null
+    start_green = null
 
 func _snap_main_camera(kart: KartController) -> void:
     if not race_camera:
@@ -378,6 +554,8 @@ func _spawn_network_kart_local(peer_id: int, id: String) -> void:
         player = kart
         _create_hud(player)
         _snap_main_camera(player)
+        if not start_countdown_active and start_green_display_left <= 0.0:
+            _begin_start_sequence()
 
 func _remove_network_kart_local(peer_id: int) -> void:
     if not network_karts.has(peer_id):
@@ -569,7 +747,7 @@ func _show_podium(total_time: float) -> void:
     main_v.add_child(title)
 
     var subtitle: Label = Label.new()
-    subtitle.text = "TOP 3 AWARDS  ·  기록 %.2f초" % total_time
+    subtitle.text = "TOP 3 AWARDS · 완주 기록"
     subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     subtitle.add_theme_font_size_override("font_size",18)
     subtitle.modulate = Color(0.80,0.82,0.88)
@@ -587,9 +765,9 @@ func _show_podium(total_time: float) -> void:
             continue
         var entry: Dictionary = ranked[rank_index]
         var rank_number: int = rank_index + 1
-        var name_value: String = str(entry.get("name","UNKNOWN"))
         var is_player: bool = entry.get("kart",null) == player
-        var card: PanelContainer = _make_podium_card(rank_number,name_value,is_player)
+        var first_time: float = float(ranked[0].get("time",0.0)) if not ranked.is_empty() else 0.0
+        var card: PanelContainer = _make_podium_card(rank_number,entry,is_player,first_time)
         podium_row.add_child(card)
 
     var note: Label = Label.new()
@@ -616,10 +794,10 @@ func _show_podium(total_time: float) -> void:
     lobby_button.pressed.connect(_return_to_lobby)
     main_v.add_child(lobby_button)
 
-func _make_podium_card(rank_number: int, name_value: String, is_player: bool) -> PanelContainer:
+func _make_podium_card(rank_number: int, entry: Dictionary, is_player: bool, first_time: float) -> PanelContainer:
     var card: PanelContainer = PanelContainer.new()
-    var heights: Dictionary = {1:300,2:245,3:215}
-    card.custom_minimum_size = Vector2(285,float(heights.get(rank_number,220)))
+    var heights: Dictionary = {1:350,2:315,3:295}
+    card.custom_minimum_size = Vector2(295,float(heights.get(rank_number,300)))
 
     var style: StyleBoxFlat = StyleBoxFlat.new()
     if rank_number == 1:
@@ -641,13 +819,13 @@ func _make_podium_card(rank_number: int, name_value: String, is_player: bool) ->
     var margin: MarginContainer = MarginContainer.new()
     margin.add_theme_constant_override("margin_left",16)
     margin.add_theme_constant_override("margin_right",16)
-    margin.add_theme_constant_override("margin_top",18)
-    margin.add_theme_constant_override("margin_bottom",18)
+    margin.add_theme_constant_override("margin_top",14)
+    margin.add_theme_constant_override("margin_bottom",14)
     card.add_child(margin)
 
     var v: VBoxContainer = VBoxContainer.new()
     v.alignment = BoxContainer.ALIGNMENT_CENTER
-    v.add_theme_constant_override("separation",10)
+    v.add_theme_constant_override("separation",7)
     margin.add_child(v)
 
     var medal: Label = Label.new()
@@ -656,29 +834,51 @@ func _make_podium_card(rank_number: int, name_value: String, is_player: bool) ->
     medal.add_theme_font_size_override("font_size",34 if rank_number == 1 else 28)
     v.add_child(medal)
 
-    var award: Label = Label.new()
-    award.text = "CHAMPION" if rank_number == 1 else ("SILVER" if rank_number == 2 else "BRONZE")
-    award.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    award.add_theme_font_size_override("font_size",18)
-    v.add_child(award)
+    var kart_id_value: String = str(entry.get("kart_id","rookie"))
+    var character_color: Color = Color(0.3,0.7,1.0)
+    if kart_data.has(kart_id_value):
+        var raw_color: Array = (kart_data[kart_id_value] as Dictionary).get("color",[0.3,0.7,1.0])
+        if raw_color.size() >= 3:
+            character_color = Color(float(raw_color[0]),float(raw_color[1]),float(raw_color[2]))
+
+    var character: PodiumCharacter = PodiumCharacter.new()
+    character.custom_minimum_size = Vector2(150,120)
+    character.set_body_color(character_color)
+    v.add_child(character)
 
     var name_label: Label = Label.new()
-    name_label.text = name_value
+    name_label.text = str(entry.get("name","UNKNOWN"))
     name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    name_label.add_theme_font_size_override("font_size",18)
+    name_label.add_theme_font_size_override("font_size",17)
     v.add_child(name_label)
+
+    var record_time: float = float(entry.get("time",0.0))
+    var record_label: Label = Label.new()
+    record_label.text = "기록  %.2f초" % record_time
+    record_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    record_label.add_theme_font_size_override("font_size",18)
+    v.add_child(record_label)
+
+    var gap_label: Label = Label.new()
+    if rank_number == 1:
+        gap_label.text = "BEST RECORD"
+    else:
+        gap_label.text = "1위와  +%.2f초" % max(0.0,record_time-first_time)
+    gap_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    gap_label.modulate = Color(0.83,0.85,0.90)
+    v.add_child(gap_label)
 
     if is_player:
         var you: Label = Label.new()
-        you.text = "내 카트"
+        you.text = "내 캐릭터"
         you.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-        you.add_theme_font_size_override("font_size",16)
+        you.add_theme_font_size_override("font_size",15)
         you.modulate = Color(1.0,0.82,0.28)
         v.add_child(you)
 
     var pedestal: ColorRect = ColorRect.new()
-    pedestal.custom_minimum_size = Vector2(0,70 if rank_number == 1 else (55 if rank_number == 2 else 42))
+    pedestal.custom_minimum_size = Vector2(0,56 if rank_number == 1 else (44 if rank_number == 2 else 36))
     if rank_number == 1:
         pedestal.color = Color(0.95,0.67,0.10,0.72)
     elif rank_number == 2:
@@ -700,6 +900,7 @@ func _get_ranked_entries() -> Array[Dictionary]:
             display_name = str((kart_data[kart.kart_id] as Dictionary).get("display_name",kart.kart_id))
         entries.append({
             "kart":kart,
+            "kart_id":kart.kart_id,
             "name":display_name,
             "time":float(finished_times.get(kart.get_instance_id(),0.0))
         })
@@ -727,6 +928,15 @@ func _return_to_lobby() -> void:
         result_label.text = "로비로 돌아왔습니다."
 
 func _clear_race(disconnect_network: bool) -> void:
+    start_countdown_active = false
+    start_countdown_left = 0.0
+    start_green_display_left = 0.0
+    start_boost_p1 = false
+    start_boost_p2 = false
+    start_early_p1 = false
+    start_early_p2 = false
+    _hide_start_lights()
+
     finish_countdown_active = false
     finish_countdown_left = 0.0
     finished_order.clear()
