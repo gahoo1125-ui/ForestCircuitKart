@@ -490,7 +490,7 @@ func _mode_option(text_value: String, mode_value: String, desc: String) -> void:
 func _build_map_tab() -> void:
     tab_title.text = "맵 선택"
 
-    _map_card("FOREST CIRCUIT","★★★☆☆","숲 · 폭포 · 상층 트랙 · 터널",true)
+    _map_card("FOREST CIRCUIT","★★★★☆","숲 · 폭포 · 상층 트랙 · 터널 · 숙련자용 지름길 3개",true)
     _map_card("CRYSTAL CANYON","★★★★☆","수정 협곡 / 추후 업데이트",false)
     _map_card("SKY GARDEN","★★★★★","공중 정원 / 추후 업데이트",false)
 

@@ -26,6 +26,9 @@ var jump_velocity: float = 0.0
 var jump_cooldown: float = 0.0
 var boost_pad_cooldown: float = 0.0
 var ride_height: float = 0.0
+var active_shortcut_id: String = ""
+var shortcut_entry_valid: bool = false
+var shortcut_fail_cooldown: float = 0.0
 
 # Arcade handling tuning: glued-down grip, instant steering and strong bodyfight.
 const ARCADE_GRIP_MULT: float = 1.88
@@ -925,6 +928,8 @@ func _physics_process(delta: float) -> void:
         jump_cooldown = max(0.0,jump_cooldown-delta)
     if boost_pad_cooldown > 0.0:
         boost_pad_cooldown = max(0.0,boost_pad_cooldown-delta)
+    if shortcut_fail_cooldown > 0.0:
+        shortcut_fail_cooldown = max(0.0,shortcut_fail_cooldown-delta)
 
     # No free-flight jump physics anymore. Ramps are controlled transitions to upper decks.
     jump_height = 0.0
@@ -1041,26 +1046,59 @@ func _physics_process(delta: float) -> void:
 
     var info: Dictionary = track.nearest_track_info(global_position)
     var track_idx: int = int(info["index"])
+    var shortcut: Dictionary = track.shortcut_info(global_position)
+    var shortcut_active: bool = bool(shortcut.get("active",false))
 
-    # Hard course containment: even at high speed the kart cannot hop over a guardrail.
-    global_position = track.confine_to_road(global_position,track_idx)
+    if shortcut_active:
+        var sid: String = str(shortcut.get("id",""))
+        if sid != active_shortcut_id:
+            active_shortcut_id = sid
+            shortcut_entry_valid = track.shortcut_entry_allowed(
+                str(shortcut.get("requirement","")),
+                drifting,
+                boost_timer > 0.0,
+                abs(forward_speed)
+            )
 
-    # Smoothly follow ramps onto the second floor and back down.
+            if not shortcut_entry_valid and shortcut_fail_cooldown <= 0.0:
+                shortcut_fail_cooldown = 0.8
+                forward_speed *= 0.42
+                var rejected: Vector3 = track.reject_shortcut_position(shortcut)
+                if rejected != Vector3.ZERO:
+                    global_position = rejected
+                active_shortcut_id = ""
+                shortcut_active = false
+        elif not shortcut_entry_valid:
+            shortcut_active = false
+    else:
+        active_shortcut_id = ""
+        shortcut_entry_valid = false
+
+    if shortcut_active and shortcut_entry_valid:
+        track_idx = int(shortcut.get("track_index",track_idx))
+        global_position = track.confine_to_shortcut(global_position,shortcut)
+    else:
+        # Hard course containment: even at high speed the kart cannot hop over a guardrail.
+        global_position = track.confine_to_road(global_position,track_idx)
+
+    # Smoothly follow either the normal road height or the skill shortcut height.
     var target_height: float = track.track_height_at(track_idx)
+    if shortcut_active and shortcut_entry_valid:
+        target_height = float(shortcut.get("height",target_height))
     ride_height = move_toward(ride_height,target_height,7.5*delta)
     global_position.y = 0.55 + ride_height
 
     # Ground-floor pads give a short automatic acceleration burst.
-    if target_height < 0.25 and track.boost_pad_at(track_idx) and boost_pad_cooldown <= 0.0:
+    if not shortcut_active and target_height < 0.25 and track.boost_pad_at(track_idx) and boost_pad_cooldown <= 0.0:
         boost_pad_cooldown = 1.15
         boost_timer = max(boost_timer,0.90)
         forward_speed = max(forward_speed,float(stats.get("max_speed",36.0))*0.72)
 
-    var offroad: bool = float(info["distance"]) > track.road_width * 0.58
+    var offroad: bool = float(info["distance"]) > track.road_width * 0.58 and not shortcut_active
     if offroad:
         forward_speed = min(forward_speed,20.0)
 
-    _update_lap(int(info["index"]))
+    _update_lap(track_idx)
 
     if reset_pressed:
         global_transform = track.spawn_transform_at(int(info["index"]),0.0)
@@ -1070,6 +1108,9 @@ func _physics_process(delta: float) -> void:
         jump_velocity = 0.0
         jump_cooldown = 0.6
         boost_pad_cooldown = 0.5
+        active_shortcut_id = ""
+        shortcut_entry_valid = false
+        shortcut_fail_cooldown = 0.5
         ride_height = track.track_height_at(int(info["index"]))
 
     hud_update.emit(int(abs(forward_speed)*3.6),lap,n2o_count,clamp(drift_charge,0.0,100.0),offroad)

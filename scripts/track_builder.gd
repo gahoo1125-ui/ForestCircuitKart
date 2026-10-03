@@ -7,6 +7,7 @@ var boost_indices: Array[int] = []
 var sample_points: Array[Vector3] = []
 var sample_tangents: Array[Vector3] = []
 var checkpoint_indices: Array[int] = []
+var shortcut_routes: Array[Dictionary] = []
 
 func setup() -> void:
     _sample_track()
@@ -15,6 +16,7 @@ func setup() -> void:
     _build_scenery()
     _build_stunt_elements()
     _build_natural_landmarks()
+    _build_shortcuts()
     _build_arcade_race_environment()
     _build_checkpoints()
 
@@ -800,6 +802,10 @@ func boost_pad_at(track_index: int) -> bool:
 func confine_to_road(world_pos: Vector3, track_index: int) -> Vector3:
     if sample_points.is_empty():
         return world_pos
+
+    var shortcut: Dictionary = shortcut_info(world_pos)
+    if bool(shortcut.get("active",false)):
+        return confine_to_shortcut(world_pos,shortcut)
 
     var idx: int = posmod(track_index,sample_points.size())
     var center: Vector3 = sample_points[idx]
