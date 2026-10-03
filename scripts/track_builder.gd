@@ -799,6 +799,308 @@ func boost_pad_at(track_index: int) -> bool:
             return true
     return false
 
+func _build_shortcuts() -> void:
+    shortcut_routes.clear()
+    if sample_points.is_empty():
+        return
+
+    var n: int = sample_points.size()
+    var defs: Array[Dictionary] = [
+        {
+            "id":"woodland_drift",
+            "name":"숨은 숲 샛길",
+            "start":int(n*0.07),
+            "end":int(n*0.13),
+            "width":7.0,
+            "offset":-8.5,
+            "peak_height":0.0,
+            "requirement":"drift",
+            "theme":"dirt"
+        },
+        {
+            "id":"boost_tunnel",
+            "name":"부스터 터널",
+            "start":int(n*0.33),
+            "end":int(n*0.40),
+            "width":6.2,
+            "offset":10.0,
+            "peak_height":0.0,
+            "requirement":"boost",
+            "theme":"tunnel"
+        },
+        {
+            "id":"ridge_jump",
+            "name":"언덕 위 비밀 루트",
+            "start":int(n*0.79),
+            "end":int(n*0.87),
+            "width":6.6,
+            "offset":-9.0,
+            "peak_height":2.2,
+            "requirement":"skill",
+            "theme":"ridge"
+        }
+    ]
+
+    for def in defs:
+        var route: Dictionary = def.duplicate(true)
+        route["points"] = _make_shortcut_points(route)
+        shortcut_routes.append(route)
+        _build_shortcut_route(route)
+
+func _make_shortcut_points(route: Dictionary) -> Array[Vector3]:
+    var points: Array[Vector3] = []
+    var start_idx: int = int(route["start"])
+    var end_idx: int = int(route["end"])
+    var a: Vector3 = sample_points[start_idx]
+    var b: Vector3 = sample_points[end_idx]
+    var tangent: Vector3 = sample_tangents[start_idx]
+    tangent.y = 0.0
+    tangent = tangent.normalized()
+    var right: Vector3 = Vector3(-tangent.z,0.0,tangent.x)
+    var control: Vector3 = (a+b)*0.5 + right*float(route["offset"])
+    var peak_height: float = float(route.get("peak_height",0.0))
+
+    for i in range(13):
+        var t: float = float(i)/12.0
+        var omt: float = 1.0-t
+        var p: Vector3 = omt*omt*a + 2.0*omt*t*control + t*t*b
+        p.y = sin(PI*t)*peak_height
+        points.append(p)
+    return points
+
+func _build_shortcut_route(route: Dictionary) -> void:
+    var points: Array = route.get("points",[])
+    if points.size() < 2:
+        return
+
+    var width: float = float(route.get("width",6.5))
+    var theme: String = str(route.get("theme","dirt"))
+    var road_mat: StandardMaterial3D
+    if theme == "tunnel":
+        road_mat = _mat(Color(0.08,0.11,0.14),0.18,0.58)
+    elif theme == "ridge":
+        road_mat = _mat(Color(0.31,0.22,0.11),0.02,0.88)
+    else:
+        road_mat = _mat(Color(0.30,0.19,0.085),0.0,0.96)
+
+    var edge_mat: StandardMaterial3D = _mat(Color(0.16,0.38,0.10),0.0,0.88)
+    var hint_mat: StandardMaterial3D = _mat(Color(0.92,0.72,0.12),0.08,0.32)
+    hint_mat.emission_enabled = true
+    hint_mat.emission = Color(0.25,0.12,0.01)
+    hint_mat.emission_energy_multiplier = 1.3
+
+    var body: StaticBody3D = StaticBody3D.new()
+    body.name = "ShortcutCollision_" + str(route["id"])
+    add_child(body)
+
+    for i in range(points.size()-1):
+        var a: Vector3 = points[i]
+        var b: Vector3 = points[i+1]
+        var mid: Vector3 = (a+b)*0.5
+        var dir: Vector3 = (b-a).normalized()
+        var length: float = a.distance_to(b)
+
+        var road: MeshInstance3D = MeshInstance3D.new()
+        var road_mesh: BoxMesh = BoxMesh.new()
+        road_mesh.size = Vector3(width,0.22,length+0.30)
+        road.mesh = road_mesh
+        road.position = mid + Vector3.DOWN*0.02
+        road.basis = Basis.looking_at(dir,Vector3.UP)
+        road.material_override = road_mat
+        add_child(road)
+
+        var shape: BoxShape3D = BoxShape3D.new()
+        shape.size = Vector3(width,0.24,length+0.34)
+        var col: CollisionShape3D = CollisionShape3D.new()
+        col.shape = shape
+        col.position = mid + Vector3.DOWN*0.02
+        col.basis = Basis.looking_at(dir,Vector3.UP)
+        body.add_child(col)
+
+        if i > 0 and i < points.size()-2 and i%3 == 0:
+            var flat_dir: Vector3 = dir
+            flat_dir.y = 0.0
+            flat_dir = flat_dir.normalized()
+            var side_vec: Vector3 = Vector3(-flat_dir.z,0.0,flat_dir.x)
+            for side in [-1.0,1.0]:
+                var marker: MeshInstance3D = MeshInstance3D.new()
+                var mm: SphereMesh = SphereMesh.new()
+                mm.radius = 0.38
+                mm.height = 0.54
+                marker.mesh = mm
+                marker.scale = Vector3(1.2,0.7,0.9)
+                marker.position = mid + side_vec*float(side)*(width*0.5+0.5) + Vector3.UP*0.27
+                marker.material_override = edge_mat
+                add_child(marker)
+
+    var entry: Vector3 = points[1]
+    var entry_dir: Vector3 = (points[2]-points[1]).normalized()
+    var clue: MeshInstance3D = MeshInstance3D.new()
+    var clue_mesh: BoxMesh = BoxMesh.new()
+    clue_mesh.size = Vector3(1.65,0.10,0.42)
+    clue.mesh = clue_mesh
+    clue.position = entry + Vector3.UP*0.15
+    clue.basis = Basis.looking_at(entry_dir,Vector3.UP)
+    clue.material_override = hint_mat
+    add_child(clue)
+
+    if theme == "tunnel":
+        _decorate_shortcut_tunnel(points,width)
+    elif theme == "ridge":
+        _decorate_shortcut_ridge(points,width)
+    else:
+        _decorate_shortcut_forest(points)
+
+func _decorate_shortcut_forest(points: Array) -> void:
+    var bush_mat: StandardMaterial3D = _mat(Color(0.035,0.27,0.065),0.0,0.94)
+    for idx in [1,2,9,10]:
+        if idx >= points.size():
+            continue
+        var bush: MeshInstance3D = MeshInstance3D.new()
+        var bm: SphereMesh = SphereMesh.new()
+        bm.radius = 0.72
+        bm.height = 1.0
+        bush.mesh = bm
+        bush.scale = Vector3(1.4,0.65,0.95)
+        bush.position = points[idx] + Vector3.UP*0.45
+        bush.material_override = bush_mat
+        add_child(bush)
+
+func _decorate_shortcut_tunnel(points: Array, width: float) -> void:
+    var shell_mat: StandardMaterial3D = _mat(Color(0.045,0.07,0.11),0.34,0.34)
+    var glow_mat: StandardMaterial3D = _mat(Color(0.06,0.64,1.0),0.25,0.18)
+    glow_mat.emission_enabled = true
+    glow_mat.emission = Color(0.02,0.52,1.0)
+    glow_mat.emission_energy_multiplier = 3.5
+
+    for i in range(2,points.size()-2,2):
+        var p: Vector3 = points[i]
+        var dir: Vector3 = (points[min(i+1,points.size()-1)]-points[max(i-1,0)]).normalized()
+        var right: Vector3 = Vector3(-dir.z,0.0,dir.x).normalized()
+
+        for side in [-1.0,1.0]:
+            var wall: MeshInstance3D = MeshInstance3D.new()
+            var wm: BoxMesh = BoxMesh.new()
+            wm.size = Vector3(0.65,4.0,2.5)
+            wall.mesh = wm
+            wall.position = p + right*float(side)*(width*0.5+0.25) + Vector3.UP*2.0
+            wall.basis = Basis.looking_at(dir,Vector3.UP)
+            wall.material_override = shell_mat
+            add_child(wall)
+
+        var roof: MeshInstance3D = MeshInstance3D.new()
+        var rm: BoxMesh = BoxMesh.new()
+        rm.size = Vector3(width+1.2,0.45,2.5)
+        roof.mesh = rm
+        roof.position = p + Vector3.UP*4.0
+        roof.basis = Basis.looking_at(dir,Vector3.UP)
+        roof.material_override = shell_mat
+        add_child(roof)
+
+        var strip: MeshInstance3D = MeshInstance3D.new()
+        var sm: BoxMesh = BoxMesh.new()
+        sm.size = Vector3(width*0.72,0.06,0.26)
+        strip.mesh = sm
+        strip.position = p + Vector3.UP*0.15
+        strip.basis = Basis.looking_at(dir,Vector3.UP)
+        strip.material_override = glow_mat
+        add_child(strip)
+
+func _decorate_shortcut_ridge(points: Array, width: float) -> void:
+    var wood_mat: StandardMaterial3D = _mat(Color(0.26,0.15,0.07),0.0,0.92)
+    for idx in [2,9]:
+        if idx >= points.size():
+            continue
+        var p: Vector3 = points[idx]
+        var dir: Vector3 = (points[min(idx+1,points.size()-1)]-points[max(idx-1,0)]).normalized()
+        var ramp: MeshInstance3D = MeshInstance3D.new()
+        var rm: BoxMesh = BoxMesh.new()
+        rm.size = Vector3(width*0.92,0.24,3.2)
+        ramp.mesh = rm
+        ramp.position = p + Vector3.UP*0.10
+        ramp.basis = Basis.looking_at(dir,Vector3.UP)
+        ramp.material_override = wood_mat
+        add_child(ramp)
+
+func shortcut_info(world_pos: Vector3) -> Dictionary:
+    var best: Dictionary = {"active":false}
+    var best_distance: float = INF
+
+    for route in shortcut_routes:
+        var points: Array = route.get("points",[])
+        if points.size() < 2:
+            continue
+
+        for i in range(points.size()-1):
+            var a: Vector3 = points[i]
+            var b: Vector3 = points[i+1]
+            var ab: Vector3 = b-a
+            ab.y = 0.0
+            var len_sq: float = max(0.0001,ab.length_squared())
+            var ap: Vector3 = world_pos-a
+            ap.y = 0.0
+            var local_t: float = clamp(ap.dot(ab)/len_sq,0.0,1.0)
+            var closest: Vector3 = a + (b-a)*local_t
+            var dx: float = world_pos.x-closest.x
+            var dz: float = world_pos.z-closest.z
+            var dist: float = sqrt(dx*dx+dz*dz)
+
+            if dist < best_distance and dist <= float(route.get("width",6.5))*0.62:
+                best_distance = dist
+                var route_t: float = (float(i)+local_t)/float(points.size()-1)
+                var start_idx: int = int(route["start"])
+                var end_idx: int = int(route["end"])
+                best = {
+                    "active":true,
+                    "id":str(route["id"]),
+                    "name":str(route["name"]),
+                    "requirement":str(route["requirement"]),
+                    "distance":dist,
+                    "point":closest,
+                    "segment_start":a,
+                    "segment_end":b,
+                    "width":float(route["width"]),
+                    "height":closest.y,
+                    "route_t":route_t,
+                    "track_index":int(round(lerp(float(start_idx),float(end_idx),route_t)))
+                }
+
+    return best
+
+func shortcut_entry_allowed(requirement: String, drifting: bool, boosting: bool, speed_value: float) -> bool:
+    match requirement:
+        "drift":
+            return drifting and speed_value > 10.0
+        "boost":
+            return boosting
+        "skill":
+            return (drifting or boosting) and speed_value > 16.0
+        _:
+            return true
+
+func confine_to_shortcut(world_pos: Vector3, info: Dictionary) -> Vector3:
+    if not bool(info.get("active",false)):
+        return world_pos
+
+    var a: Vector3 = info["segment_start"]
+    var b: Vector3 = info["segment_end"]
+    var dir: Vector3 = b-a
+    dir.y = 0.0
+    dir = dir.normalized()
+    var right: Vector3 = Vector3(-dir.z,0.0,dir.x)
+    var center: Vector3 = info["point"]
+    var lateral: float = (world_pos-center).dot(right)
+    var limit: float = float(info.get("width",6.5))*0.5-0.55
+    if abs(lateral) > limit:
+        world_pos -= right*(lateral-clamp(lateral,-limit,limit))
+    return world_pos
+
+func reject_shortcut_position(info: Dictionary) -> Vector3:
+    if not bool(info.get("active",false)):
+        return Vector3.ZERO
+    var idx: int = int(info.get("track_index",0))
+    return sample_points[posmod(idx,sample_points.size())] + Vector3.UP*0.55
+
 func confine_to_road(world_pos: Vector3, track_index: int) -> Vector3:
     if sample_points.is_empty():
         return world_pos
