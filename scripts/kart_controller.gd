@@ -25,6 +25,14 @@ var jump_height: float = 0.0
 var jump_velocity: float = 0.0
 var jump_cooldown: float = 0.0
 
+# Arcade handling tuning: glued-down grip, instant steering and strong bodyfight.
+const ARCADE_GRIP_MULT: float = 2.45
+const ARCADE_DRIFT_GRIP_MULT: float = 0.62
+const STEER_RESPONSE: float = 18.0
+const THROTTLE_RESPONSE: float = 13.5
+const COLLISION_SPEED_KEEP_WALL: float = 0.88
+const COLLISION_SPEED_KEEP_KART: float = 0.97
+
 var gold_boost_root: Node3D
 var speed_fx_root: Node3D
 var speed_streaks: Array[MeshInstance3D] = []
@@ -735,6 +743,10 @@ func _physics_process(delta: float) -> void:
     if finished or track == null:
         return
 
+    # Never allow accidental pitch/roll. The kart should feel planted and stable.
+    rotation.x = 0.0
+    rotation.z = 0.0
+
     if race_locked:
         forward_speed = 0.0
         velocity = Vector3.ZERO
@@ -743,9 +755,9 @@ func _physics_process(delta: float) -> void:
 
     if control_mode == "remote":
         if has_remote_state:
-            global_position = global_position.lerp(remote_position,clamp(delta*10.0,0.0,1.0))
-            rotation.y = lerp_angle(rotation.y,remote_yaw,clamp(delta*10.0,0.0,1.0))
-            forward_speed = lerp(forward_speed,remote_speed,clamp(delta*8.0,0.0,1.0))
+            global_position = global_position.lerp(remote_position,clamp(delta*12.0,0.0,1.0))
+            rotation.y = lerp_angle(rotation.y,remote_yaw,clamp(delta*14.0,0.0,1.0))
+            forward_speed = lerp(forward_speed,remote_speed,clamp(delta*10.0,0.0,1.0))
         return
 
     var input_data: Dictionary = _read_controls()
@@ -760,13 +772,14 @@ func _physics_process(delta: float) -> void:
 
     var airborne: bool = jump_height > 0.001 or jump_velocity > 0.001
     if airborne:
-        jump_velocity -= 20.5 * delta
+        jump_velocity -= 22.0 * delta
         jump_height += jump_velocity * delta
         if jump_height <= 0.0:
             jump_height = 0.0
             jump_velocity = 0.0
 
-    var smooth_t: float = 1.0 - exp(-7.5 * delta)
+    # Fast input response: much less inertia between key press and acceleration.
+    var smooth_t: float = 1.0 - exp(-THROTTLE_RESPONSE * delta)
     throttle_state = lerp(throttle_state,raw_throttle,smooth_t)
 
     var drifting: bool = drift_pressed and abs(steer_input) > 0.05 and abs(forward_speed) > 8.0
@@ -776,7 +789,7 @@ func _physics_process(delta: float) -> void:
     if boost_timer > 0.0:
         boost_timer -= delta
         max_speed = float(stats.get("boost_speed",44.0))
-        accel += 8.0
+        accel += 10.0
     elif boost_pressed and n2o_count > 0:
         n2o_count -= 1
         boost_timer = float(stats.get("boost_duration",1.4))
@@ -790,11 +803,12 @@ func _physics_process(delta: float) -> void:
     _update_boost_fx(delta,boost_timer > 0.0)
 
     if throttle_state > 0.03:
-        forward_speed = move_toward(forward_speed,max_speed,accel*throttle_state*delta)
+        forward_speed = move_toward(forward_speed,max_speed,accel*1.16*throttle_state*delta)
     elif throttle_state < -0.03:
-        forward_speed = move_toward(forward_speed,-max_speed*0.25,24.0*abs(throttle_state)*delta)
+        forward_speed = move_toward(forward_speed,-max_speed*0.25,30.0*abs(throttle_state)*delta)
     else:
-        forward_speed = move_toward(forward_speed,0.0,6.5*delta)
+        # Stronger coast friction makes release response crisp instead of floaty.
+        forward_speed = move_toward(forward_speed,0.0,9.5*delta)
 
     if drifting:
         drift_charge += abs(steer_input) * float(stats.get("drift_charge_rate",50.0)) * delta
@@ -804,33 +818,79 @@ func _physics_process(delta: float) -> void:
             n2o_count += 1
     was_drifting = drifting
 
+    # Snappy arcade steering: retain steering authority even at high speed.
     var speed_ratio: float = clamp(abs(forward_speed) / max(1.0,max_speed),0.0,1.0)
-    var steer_softener: float = lerp(1.0,0.68,speed_ratio)
-    var steer_target: float = steer_input * float(stats.get("steer_rate",1.6)) * steer_softener * (1.35 if drifting else 1.0)
+    var steer_softener: float = lerp(1.0,0.88,speed_ratio)
+    var steer_target: float = steer_input * float(stats.get("steer_rate",1.6)) * 1.18 * steer_softener * (1.25 if drifting else 1.0)
     if airborne:
-        steer_target *= 0.42
-    var steer_smooth: float = 1.0 - exp(-9.0 * delta)
+        steer_target *= 0.32
+    var steer_smooth: float = 1.0 - exp(-STEER_RESPONSE * delta)
     steer_state = lerp(steer_state,steer_target,steer_smooth)
 
-    rotate_y(-steer_state * delta * (1.0 if forward_speed >= 0.0 else -0.65))
+    rotate_y(-steer_state * delta * (1.0 if forward_speed >= 0.0 else -0.72))
 
     var forward: Vector3 = -global_transform.basis.z.normalized()
     var desired: Vector3 = forward * forward_speed
-    var grip_value: float = float(stats.get("grip",6.0)) * (0.72 if drifting else 1.0)
+
+    # Very high lateral grip when not drifting. Drift still has controlled slide.
+    var base_grip: float = float(stats.get("grip",6.0))
+    var grip_value: float = base_grip * (ARCADE_DRIFT_GRIP_MULT if drifting else ARCADE_GRIP_MULT)
+    if airborne:
+        grip_value *= 0.18
     velocity = velocity.lerp(desired,clamp(grip_value*delta,0.0,1.0))
     velocity.y = 0.0
+
+    var speed_before_collision: float = forward_speed
     move_and_slide()
+
+    # Heavy bodyfight / collision resistance:
+    # slide off obstacles and preserve most of the speed instead of bouncing/stopping.
+    if get_slide_collision_count() > 0:
+        var keep_ratio: float = 1.0
+        var best_normal: Vector3 = Vector3.ZERO
+
+        for i in range(get_slide_collision_count()):
+            var collision: KinematicCollision3D = get_slide_collision(i)
+            if collision == null:
+                continue
+
+            var normal: Vector3 = collision.get_normal()
+            normal.y = 0.0
+            if normal.length_squared() < 0.0001:
+                continue
+            normal = normal.normalized()
+
+            var collider: Object = collision.get_collider()
+            var ratio: float = COLLISION_SPEED_KEEP_WALL
+            if collider is KartController:
+                ratio = COLLISION_SPEED_KEEP_KART
+
+            keep_ratio = min(keep_ratio,ratio)
+            if abs(forward.dot(normal)) > abs(forward.dot(best_normal)):
+                best_normal = normal
+
+        if best_normal != Vector3.ZERO:
+            var slide_dir: Vector3 = desired.slide(best_normal)
+            if slide_dir.length_squared() > 0.001:
+                velocity = slide_dir.normalized() * abs(speed_before_collision) * keep_ratio
+
+        # Preserve travel direction and most speed through contact.
+        if abs(speed_before_collision) > 2.0:
+            forward_speed = sign(speed_before_collision) * max(abs(forward_speed),abs(speed_before_collision)*keep_ratio)
+
+    # Ground magnet: outside intentional stunt jumps, force the kart to track height.
     global_position.y = 0.55 + jump_height
 
     var info: Dictionary = track.nearest_track_info(global_position)
     var jump_strength: float = track.jump_strength_at(int(info["index"]))
     if jump_strength > 0.0 and jump_cooldown <= 0.0 and jump_height <= 0.001 and abs(forward_speed) > 10.0:
-        jump_velocity = jump_strength + min(abs(forward_speed) * 0.055,2.4)
+        jump_velocity = jump_strength + min(abs(forward_speed) * 0.045,2.0)
         jump_height = 0.03
         jump_cooldown = 1.35
+
     var offroad: bool = float(info["distance"]) > track.road_width * 0.58
     if offroad:
-        forward_speed = min(forward_speed,18.0)
+        forward_speed = min(forward_speed,20.0)
 
     _update_lap(int(info["index"]))
 
