@@ -14,10 +14,15 @@ func setup() -> void:
     _build_ground()
     _build_track()
     _build_scenery()
-    _build_stunt_elements()
+
+    # Keep the race course clean and flat:
+    # no upper-deck stunt structures, shortcut roads, jump/ramp pieces,
+    # tunnel arches or other protruding course geometry.
+    upper_sections.clear()
+    boost_indices.clear()
+    shortcut_routes.clear()
+
     _build_natural_landmarks()
-    _build_shortcuts()
-    _build_arcade_race_environment()
     _build_checkpoints()
 
 func _sample_track() -> void:

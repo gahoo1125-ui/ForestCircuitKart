@@ -300,13 +300,13 @@ func _build_ui() -> void:
     root.add_child(ip_edit)
 
     start_button = Button.new()
-    start_button.text = "게임 선택  ▶"
-    start_button.anchor_left = 1.0
-    start_button.anchor_right = 1.0
+    start_button.text = "게임 시작  ▶"
+    start_button.anchor_left = 0.0
+    start_button.anchor_right = 0.0
     start_button.anchor_top = 1.0
     start_button.anchor_bottom = 1.0
-    start_button.offset_left = -260
-    start_button.offset_right = -20
+    start_button.offset_left = 20
+    start_button.offset_right = 260
     start_button.offset_top = -112
     start_button.offset_bottom = -62
     start_button.add_theme_font_size_override("font_size",20)

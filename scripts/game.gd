@@ -839,10 +839,21 @@ func _show_podium(total_time: float) -> void:
         main_v.add_child(dnf)
 
     var lobby_button: Button = Button.new()
-    lobby_button.text = "로비로 돌아가기"
-    lobby_button.custom_minimum_size = Vector2(360,58)
+    lobby_button.text = "로비로 복귀"
+    lobby_button.custom_minimum_size = Vector2(360,62)
     lobby_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-    lobby_button.add_theme_font_size_override("font_size",21)
+    lobby_button.add_theme_font_size_override("font_size",22)
+
+    var lobby_normal: StyleBoxFlat = StyleBoxFlat.new()
+    lobby_normal.bg_color = Color(0.08,0.62,0.92,0.98)
+    lobby_normal.border_color = Color(0.42,0.90,1.0,1.0)
+    lobby_normal.set_border_width_all(2)
+    lobby_normal.corner_radius_top_left = 9
+    lobby_normal.corner_radius_top_right = 9
+    lobby_normal.corner_radius_bottom_left = 9
+    lobby_normal.corner_radius_bottom_right = 9
+    lobby_button.add_theme_stylebox_override("normal",lobby_normal)
+
     lobby_button.pressed.connect(_return_to_lobby)
     main_v.add_child(lobby_button)
 
