@@ -105,24 +105,41 @@ func _follow_camera(cam: Camera3D, kart: KartController, delta: float) -> void:
     if not kart or not is_instance_valid(kart):
         return
 
-    var boosting: bool = kart.boost_timer > 0.0
-    var forward: Vector3 = -kart.global_transform.basis.z.normalized()
-    var target: Vector3 = kart.global_position + forward * (4.8 if boosting else 4.0) + Vector3.UP * 0.72
+    var kart_transform: Transform3D = kart.get_global_transform_interpolated()
+    var raw_forward: Vector3 = -kart_transform.basis.z.normalized()
+    var kart_position: Vector3 = kart_transform.origin
 
-    # Wider road + slightly smaller kart: pull the camera back a bit so the
-    # vehicle occupies less of the screen, matching the supplied race reference.
+    if not bool(cam.get_meta("smooth_camera_ready",false)):
+        cam.set_physics_interpolation_mode(Node.PHYSICS_INTERPOLATION_MODE_OFF)
+        cam.set_meta("smooth_camera_ready",true)
+        cam.set_meta("smooth_forward",raw_forward)
+        cam.set_meta("smooth_target",kart_position + raw_forward*4.0 + Vector3.UP*0.72)
+
+    var smooth_forward: Vector3 = cam.get_meta("smooth_forward",raw_forward)
+    var forward_alpha: float = 1.0-exp(-10.5*delta)
+    smooth_forward = smooth_forward.lerp(raw_forward,clamp(forward_alpha,0.0,1.0)).normalized()
+    cam.set_meta("smooth_forward",smooth_forward)
+
+    var boosting: bool = kart.boost_timer > 0.0
+    var target_goal: Vector3 = kart_position + smooth_forward*(4.8 if boosting else 4.0) + Vector3.UP*0.72
+    var smooth_target: Vector3 = cam.get_meta("smooth_target",target_goal)
+    var target_alpha: float = 1.0-exp(-11.5*delta)
+    smooth_target = smooth_target.lerp(target_goal,clamp(target_alpha,0.0,1.0))
+    cam.set_meta("smooth_target",smooth_target)
+
     var follow_distance: float = 10.1 if boosting else 8.75
     var follow_height: float = 2.85 if boosting else 2.95
-    var desired: Vector3 = kart.global_position - forward * follow_distance + Vector3.UP * follow_height
+    var desired: Vector3 = kart_position - smooth_forward*follow_distance + Vector3.UP*follow_height
 
-    if boosting:
-        var shake_t: float = float(Time.get_ticks_msec()) * 0.001
-        desired += kart.global_transform.basis.x.normalized() * sin(shake_t * 36.0) * 0.08
-        desired += Vector3.UP * cos(shake_t * 31.0) * 0.04
+    # Stable exponential smoothing: consistent feel across 60/120/144+ FPS.
+    var position_response: float = 8.3 if boosting else 6.8
+    var position_alpha: float = 1.0-exp(-position_response*delta)
+    cam.global_position = cam.global_position.lerp(desired,clamp(position_alpha,0.0,1.0))
 
-    cam.global_position = cam.global_position.lerp(desired,clamp(delta*(10.0 if boosting else 7.6),0.0,1.0))
-    cam.fov = lerp(cam.fov,93.0 if boosting else 74.0,clamp(delta*6.8,0.0,1.0))
-    cam.look_at(target,Vector3.UP)
+    # Smooth FOV transition without the old boost camera shake.
+    var fov_alpha: float = 1.0-exp(-4.4*delta)
+    cam.fov = lerp(cam.fov,93.0 if boosting else 74.0,clamp(fov_alpha,0.0,1.0))
+    cam.look_at(smooth_target,Vector3.UP)
 
 func _add_key(action: StringName, keycode: Key) -> void:
     if not InputMap.has_action(action):
@@ -524,10 +541,19 @@ func _hide_start_lights() -> void:
 func _snap_main_camera(kart: KartController) -> void:
     if not race_camera:
         return
-    var forward: Vector3 = -kart.global_transform.basis.z.normalized()
-    race_camera.global_position = kart.global_position - forward*8.75 + Vector3.UP*2.95
+
+    var kart_transform: Transform3D = kart.get_global_transform_interpolated()
+    var forward: Vector3 = -kart_transform.basis.z.normalized()
+    var kart_position: Vector3 = kart_transform.origin
+    var target: Vector3 = kart_position + forward*4.0 + Vector3.UP*0.72
+
+    race_camera.set_physics_interpolation_mode(Node.PHYSICS_INTERPOLATION_MODE_OFF)
+    race_camera.set_meta("smooth_camera_ready",true)
+    race_camera.set_meta("smooth_forward",forward)
+    race_camera.set_meta("smooth_target",target)
+    race_camera.global_position = kart_position - forward*8.75 + Vector3.UP*2.95
     race_camera.fov = 74.0
-    race_camera.look_at(kart.global_position + forward*4.0 + Vector3.UP*0.72,Vector3.UP)
+    race_camera.look_at(target,Vector3.UP)
     race_camera.make_current()
 
 func _start_lan_host() -> void:

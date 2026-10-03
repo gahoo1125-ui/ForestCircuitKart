@@ -95,6 +95,7 @@ func setup(id: String, track_ref: TrackBuilder, mode: String = "player1", spawn_
 
     _build_kart()
     global_transform = track.spawn_transform_at(spawn_index,lane_offset)
+    reset_physics_interpolation()
     ride_height = track.track_height_at(posmod(spawn_index,track.sample_points.size()))
     safe_track_index = posmod(spawn_index,track.sample_points.size())
     last_motion_position = global_position
@@ -1639,6 +1640,7 @@ func _physics_process(delta: float) -> void:
 
     if reset_pressed:
         global_transform = track.spawn_transform_at(int(info["index"]),0.0)
+        reset_physics_interpolation()
         forward_speed = 0.0
         velocity = Vector3.ZERO
         jump_height = 0.0
@@ -1685,6 +1687,7 @@ func _recover_from_stuck(current_track_idx: int) -> void:
     global_transform = track.spawn_transform_at(rescue_idx,0.0)
     ride_height = track.track_height_at(rescue_idx)
     global_position.y = 0.55 + ride_height
+    reset_physics_interpolation()
 
     # Keep a little momentum so recovery feels like a racing-game rescue,
     # not a full stop / teleport penalty.
