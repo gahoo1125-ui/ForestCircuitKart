@@ -555,6 +555,62 @@ func _build_gold_hypercar(root: Node3D) -> void:
         end_plate.material_override = gold
         root.add_child(end_plate)
 
+    # Rear diffuser blades and gold exhaust rings.
+    for x in [-0.62,-0.31,0.31,0.62]:
+        var diffuser: MeshInstance3D = MeshInstance3D.new()
+        var diffuser_mesh: BoxMesh = BoxMesh.new()
+        diffuser_mesh.size = Vector3(0.08,0.28,0.62)
+        diffuser.mesh = diffuser_mesh
+        diffuser.position = Vector3(float(x),0.19,1.54)
+        diffuser.rotation_degrees.x = -8.0
+        diffuser.material_override = carbon_soft
+        root.add_child(diffuser)
+
+    for x in [-0.38,0.38]:
+        var exhaust_ring: MeshInstance3D = MeshInstance3D.new()
+        var exhaust_mesh: CylinderMesh = CylinderMesh.new()
+        exhaust_mesh.top_radius = 0.16
+        exhaust_mesh.bottom_radius = 0.16
+        exhaust_mesh.height = 0.08
+        exhaust_ring.mesh = exhaust_mesh
+        exhaust_ring.position = Vector3(float(x),0.46,1.68)
+        exhaust_ring.rotation_degrees.x = 90.0
+        exhaust_ring.material_override = gold_glow
+        root.add_child(exhaust_ring)
+
+    # Angular red tail lamps framed in gold.
+    var tail_red: StandardMaterial3D = StandardMaterial3D.new()
+    tail_red.albedo_color = Color(1.0,0.08,0.035)
+    tail_red.emission_enabled = true
+    tail_red.emission = Color(1.0,0.025,0.01)
+    tail_red.emission_energy_multiplier = 3.5
+    for side in [-1.0,1.0]:
+        var tail: MeshInstance3D = MeshInstance3D.new()
+        var tail_mesh: BoxMesh = BoxMesh.new()
+        tail_mesh.size = Vector3(0.48,0.055,0.10)
+        tail.mesh = tail_mesh
+        tail.position = Vector3(float(side)*0.48,0.60,1.58)
+        tail.rotation_degrees.z = float(side)*-8.0
+        tail.material_override = tail_red
+        root.add_child(tail)
+
+    # Small gold scale plates across the hood to reinforce the dragon theme.
+    for row in range(4):
+        for col in range(3):
+            var plate: MeshInstance3D = MeshInstance3D.new()
+            var pm: SphereMesh = SphereMesh.new()
+            pm.radius = 0.075
+            pm.height = 0.060
+            plate.mesh = pm
+            plate.scale = Vector3(1.25,0.20,0.78)
+            plate.position = Vector3(
+                (float(col)-1.0)*0.18,
+                0.635+float(row)*0.006,
+                -1.26+float(row)*0.19+abs(float(col)-1.0)*0.035
+            )
+            plate.material_override = gold
+            root.add_child(plate)
+
 func _build_gold_dragon(root: Node3D) -> void:
     # Gold dragon body-wrap. Kept fully gold/black so it matches the reference
     # instead of the older red-and-gold dragon decoration.

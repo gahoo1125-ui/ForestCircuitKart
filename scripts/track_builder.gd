@@ -23,6 +23,7 @@ func setup() -> void:
     shortcut_routes.clear()
 
     _build_natural_landmarks()
+    _build_bamboo_temple_environment()
     _build_checkpoints()
 
 func _sample_track() -> void:
@@ -79,7 +80,7 @@ func _build_ground() -> void:
     var mesh: PlaneMesh = PlaneMesh.new()
     mesh.size = Vector2(410, 370)
     ground.mesh = mesh
-    ground.material_override = _mat(Color(0.075,0.245,0.085),0.0,0.96)
+    ground.material_override = _mat(Color(0.022,0.075,0.045),0.0,0.94)
     ground.position.y = -0.10
     add_child(ground)
 
@@ -113,7 +114,11 @@ func _build_track() -> void:
             line.mesh = line_mesh
             line.position = mid + Vector3.UP * 0.055
             line.rotation.y = yaw
-            line.material_override = _mat(Color(0.95,0.92,0.72),0.0,0.40)
+            var lane_mat: StandardMaterial3D = _mat(Color(0.94,0.80,0.34),0.08,0.32)
+            lane_mat.emission_enabled = true
+            lane_mat.emission = Color(0.25,0.10,0.01)
+            lane_mat.emission_energy_multiplier = 0.8
+            line.material_override = lane_mat
             add_child(line)
 
         for side in [-1.0,1.0]:
@@ -127,7 +132,8 @@ func _build_track() -> void:
             rail.mesh = rail_mesh
             rail.position = rail_pos
             rail.rotation.y = yaw
-            rail.material_override = _mat(Color(0.82,0.84,0.88),0.65,0.28)
+            var rail_mat: StandardMaterial3D = _mat(Color(0.34,0.055,0.045),0.18,0.42)
+            rail.material_override = rail_mat
             add_child(rail)
 
             var rail_shape: BoxShape3D = BoxShape3D.new()
@@ -1127,6 +1133,278 @@ func confine_to_road(world_pos: Vector3, track_index: int) -> Vector3:
         world_pos -= right*(lateral-clamp(lateral,-limit,limit))
 
     return world_pos
+
+func _temple_box(parent: Node3D, pos: Vector3, size: Vector3, mat: StandardMaterial3D, basis: Basis = Basis.IDENTITY) -> MeshInstance3D:
+    var mi: MeshInstance3D = MeshInstance3D.new()
+    var mesh: BoxMesh = BoxMesh.new()
+    mesh.size = size
+    mi.mesh = mesh
+    mi.position = pos
+    mi.basis = basis
+    mi.material_override = mat
+    parent.add_child(mi)
+    return mi
+
+func _temple_cylinder(parent: Node3D, pos: Vector3, radius: float, height: float, mat: StandardMaterial3D) -> MeshInstance3D:
+    var mi: MeshInstance3D = MeshInstance3D.new()
+    var mesh: CylinderMesh = CylinderMesh.new()
+    mesh.top_radius = radius*0.78
+    mesh.bottom_radius = radius
+    mesh.height = height
+    mi.mesh = mesh
+    mi.position = pos
+    mi.material_override = mat
+    parent.add_child(mi)
+    return mi
+
+func _build_lantern(root: Node3D, pos: Vector3, scale_value: float, warm: StandardMaterial3D, dark: StandardMaterial3D) -> void:
+    _temple_cylinder(root,pos+Vector3.UP*(1.55*scale_value),0.075*scale_value,3.1*scale_value,dark)
+    var lamp: MeshInstance3D = MeshInstance3D.new()
+    var lamp_mesh: CylinderMesh = CylinderMesh.new()
+    lamp_mesh.top_radius = 0.24*scale_value
+    lamp_mesh.bottom_radius = 0.24*scale_value
+    lamp_mesh.height = 0.50*scale_value
+    lamp.mesh = lamp_mesh
+    lamp.position = pos+Vector3.UP*(3.15*scale_value)
+    lamp.material_override = warm
+    root.add_child(lamp)
+
+    var cap_top: MeshInstance3D = MeshInstance3D.new()
+    var cap_mesh: CylinderMesh = CylinderMesh.new()
+    cap_mesh.top_radius = 0.04*scale_value
+    cap_mesh.bottom_radius = 0.34*scale_value
+    cap_mesh.height = 0.22*scale_value
+    cap_top.mesh = cap_mesh
+    cap_top.position = pos+Vector3.UP*(3.48*scale_value)
+    cap_top.material_override = dark
+    root.add_child(cap_top)
+
+func _build_bamboo_cluster(root: Node3D, center: Vector3, mat: StandardMaterial3D, leaf_mat: StandardMaterial3D, seed: int) -> void:
+    for j in range(7):
+        var angle: float = TAU*float(j)/7.0 + float(seed%7)*0.13
+        var radius: float = 0.65 + float((j+seed)%3)*0.34
+        var p: Vector3 = center + Vector3(cos(angle)*radius,0.0,sin(angle)*radius)
+        var h: float = 5.6 + float((j*3+seed)%5)*0.72
+        _temple_cylinder(root,p+Vector3.UP*(h*0.5),0.10+0.018*float(j%2),h,mat)
+
+        for leaf_i in range(2):
+            var leaf: MeshInstance3D = MeshInstance3D.new()
+            var lm: SphereMesh = SphereMesh.new()
+            lm.radius = 0.55+0.10*float((j+leaf_i)%2)
+            lm.height = 0.50
+            leaf.mesh = lm
+            leaf.scale = Vector3(1.8,0.26,0.72)
+            leaf.position = p + Vector3(
+                cos(angle+float(leaf_i)*1.9)*0.45,
+                h-0.9+float(leaf_i)*0.45,
+                sin(angle+float(leaf_i)*1.9)*0.45
+            )
+            leaf.rotation_degrees.y = rad_to_deg(angle)+float(leaf_i)*38.0
+            leaf.material_override = leaf_mat
+            root.add_child(leaf)
+
+func _build_cherry_tree(root: Node3D, center: Vector3, trunk_mat: StandardMaterial3D, blossom_mat: StandardMaterial3D, seed: int) -> void:
+    var h: float = 3.6+float(seed%3)*0.45
+    _temple_cylinder(root,center+Vector3.UP*(h*0.48),0.22,h,trunk_mat)
+    for j in range(6):
+        var a: float = TAU*float(j)/6.0 + float(seed%4)*0.21
+        var crown: MeshInstance3D = MeshInstance3D.new()
+        var cm: SphereMesh = SphereMesh.new()
+        cm.radius = 0.95+0.12*float(j%2)
+        cm.height = 1.10
+        crown.mesh = cm
+        crown.scale = Vector3(1.15,0.78,1.0)
+        crown.position = center + Vector3(cos(a)*1.05,h+sin(float(j)*1.4)*0.26,sin(a)*0.78)
+        crown.material_override = blossom_mat
+        root.add_child(crown)
+
+func _build_pagoda(root: Node3D, center: Vector3, facing: Vector3, scale_value: float, wall_mat: StandardMaterial3D, trim_mat: StandardMaterial3D, roof_mat: StandardMaterial3D, glow_mat: StandardMaterial3D) -> void:
+    var right: Vector3 = Vector3(-facing.z,0.0,facing.x).normalized()
+    var base_basis: Basis = Basis.looking_at(facing,Vector3.UP)
+
+    _temple_box(root,center+Vector3.UP*(0.45*scale_value),Vector3(6.8,0.9,5.2)*scale_value,trim_mat,base_basis)
+
+    for level in range(3):
+        var y: float = (1.25+float(level)*2.25)*scale_value
+        var shrink: float = 1.0-float(level)*0.15
+        _temple_box(root,center+Vector3.UP*y,Vector3(5.1,1.55,3.8)*scale_value*shrink,wall_mat,base_basis)
+
+        # Wide layered roof slab + gold underside.
+        var roof_y: float = y+1.05*scale_value*shrink
+        _temple_box(root,center+Vector3.UP*roof_y,Vector3(6.6,0.28,5.15)*scale_value*shrink,roof_mat,base_basis)
+        _temple_box(root,center+Vector3.UP*(roof_y+0.18*scale_value),Vector3(5.9,0.12,4.55)*scale_value*shrink,trim_mat,base_basis)
+
+        # Warm windows on both sides.
+        for side in [-1.0,1.0]:
+            var wp: Vector3 = center + right*float(side)*(1.50*scale_value*shrink) - facing*(1.93*scale_value*shrink) + Vector3.UP*y
+            _temple_box(root,wp,Vector3(0.9,0.72,0.08)*scale_value*shrink,glow_mat,base_basis)
+
+    var spire: MeshInstance3D = MeshInstance3D.new()
+    var sm: CylinderMesh = CylinderMesh.new()
+    sm.top_radius = 0.0
+    sm.bottom_radius = 0.48*scale_value
+    sm.height = 2.8*scale_value
+    spire.mesh = sm
+    spire.position = center+Vector3.UP*(7.9*scale_value)
+    spire.material_override = trim_mat
+    root.add_child(spire)
+
+func _build_temple_gate(root: Node3D, p: Vector3, tangent: Vector3, scale_value: float, red_mat: StandardMaterial3D, roof_mat: StandardMaterial3D, gold_mat: StandardMaterial3D) -> void:
+    var right: Vector3 = Vector3(-tangent.z,0.0,tangent.x).normalized()
+    var basis: Basis = Basis.looking_at(tangent,Vector3.UP)
+    var offset: float = road_width*0.5+2.8
+
+    for side in [-1.0,1.0]:
+        _temple_box(root,p+right*float(side)*offset+Vector3.UP*(3.2*scale_value),Vector3(0.75,6.4,0.75)*scale_value,red_mat,basis)
+        _temple_box(root,p+right*float(side)*(offset+0.95*scale_value)+Vector3.UP*(1.05*scale_value),Vector3(1.1,2.1,1.1)*scale_value,roof_mat,basis)
+
+    _temple_box(root,p+Vector3.UP*(5.95*scale_value),Vector3(road_width+7.5,0.72,1.05)*scale_value,red_mat,basis)
+    _temple_box(root,p+Vector3.UP*(6.55*scale_value),Vector3(road_width+10.0,0.26,1.65)*scale_value,roof_mat,basis)
+    _temple_box(root,p-tangent*(0.58*scale_value)+Vector3.UP*(5.90*scale_value),Vector3(4.3,1.45,0.18)*scale_value,gold_mat,basis)
+
+func _build_dragon_statue(root: Node3D, center: Vector3, scale_value: float, gold_mat: StandardMaterial3D, rock_mat: StandardMaterial3D) -> void:
+    _temple_cylinder(root,center+Vector3.UP*(0.75*scale_value),2.25*scale_value,1.50*scale_value,rock_mat)
+
+    var prev: Vector3 = center+Vector3(-2.0*scale_value,2.0*scale_value,0.0)
+    for i in range(12):
+        var t: float = float(i)/11.0
+        var a: float = t*TAU*1.20
+        var p: Vector3 = center + Vector3(
+            cos(a)*(2.4-0.7*t)*scale_value,
+            (2.3+4.2*t)*scale_value,
+            sin(a)*(1.5-0.3*t)*scale_value
+        )
+        var segment: MeshInstance3D = MeshInstance3D.new()
+        var seg_mesh: SphereMesh = SphereMesh.new()
+        seg_mesh.radius = (0.50-0.16*t)*scale_value
+        seg_mesh.height = (0.72-0.18*t)*scale_value
+        segment.mesh = seg_mesh
+        segment.position = p
+        segment.material_override = gold_mat
+        root.add_child(segment)
+
+        if i > 0:
+            var dir: Vector3 = p-prev
+            var link: MeshInstance3D = MeshInstance3D.new()
+            var link_mesh: CylinderMesh = CylinderMesh.new()
+            link_mesh.top_radius = (0.34-0.08*t)*scale_value
+            link_mesh.bottom_radius = (0.39-0.08*t)*scale_value
+            link_mesh.height = dir.length()
+            link.mesh = link_mesh
+            link.position = (prev+p)*0.5
+            link.basis = Basis.looking_at(dir.normalized(),Vector3.UP).rotated(Vector3.RIGHT,PI*0.5)
+            link.material_override = gold_mat
+            root.add_child(link)
+        prev = p
+
+    var head: MeshInstance3D = MeshInstance3D.new()
+    var hm: SphereMesh = SphereMesh.new()
+    hm.radius = 0.72*scale_value
+    hm.height = 0.85*scale_value
+    head.mesh = hm
+    head.scale = Vector3(1.5,0.80,1.0)
+    head.position = prev+Vector3(0.0,0.20*scale_value,-0.25*scale_value)
+    head.material_override = gold_mat
+    root.add_child(head)
+
+    for side in [-1.0,1.0]:
+        var horn: MeshInstance3D = MeshInstance3D.new()
+        var horn_mesh: CylinderMesh = CylinderMesh.new()
+        horn_mesh.top_radius = 0.0
+        horn_mesh.bottom_radius = 0.16*scale_value
+        horn_mesh.height = 1.20*scale_value
+        horn.mesh = horn_mesh
+        horn.position = head.position+Vector3(float(side)*0.48*scale_value,0.62*scale_value,0.0)
+        horn.rotation_degrees.z = float(side)*-24.0
+        horn.material_override = gold_mat
+        root.add_child(horn)
+
+func _build_bamboo_temple_environment() -> void:
+    if sample_points.is_empty():
+        return
+
+    var root: Node3D = Node3D.new()
+    root.name = "BambooTempleEnvironment"
+    add_child(root)
+
+    var bamboo_mat: StandardMaterial3D = _mat(Color(0.055,0.31,0.10),0.03,0.78)
+    var bamboo_leaf: StandardMaterial3D = _mat(Color(0.035,0.18,0.075),0.0,0.86)
+    var blossom: StandardMaterial3D = _mat(Color(0.92,0.43,0.62),0.0,0.72)
+    blossom.emission_enabled = true
+    blossom.emission = Color(0.12,0.025,0.050)
+    blossom.emission_energy_multiplier = 0.8
+    var trunk: StandardMaterial3D = _mat(Color(0.22,0.095,0.045),0.0,0.90)
+    var red: StandardMaterial3D = _mat(Color(0.42,0.035,0.030),0.22,0.42)
+    var dark_wood: StandardMaterial3D = _mat(Color(0.075,0.030,0.026),0.18,0.40)
+    var roof: StandardMaterial3D = _mat(Color(0.025,0.035,0.050),0.38,0.28)
+    var gold: StandardMaterial3D = _mat(Color(0.94,0.63,0.10),0.86,0.16)
+    gold.emission_enabled = true
+    gold.emission = Color(0.30,0.12,0.01)
+    gold.emission_energy_multiplier = 1.35
+    var lantern: StandardMaterial3D = _mat(Color(1.0,0.72,0.25),0.05,0.18)
+    lantern.emission_enabled = true
+    lantern.emission = Color(1.0,0.45,0.08)
+    lantern.emission_energy_multiplier = 3.0
+    var wall_mat: StandardMaterial3D = _mat(Color(0.48,0.28,0.17),0.0,0.70)
+    var rock: StandardMaterial3D = _mat(Color(0.12,0.14,0.16),0.02,0.92)
+
+    var n: int = sample_points.size()
+
+    # Dense but performance-friendly bamboo and cherry blossom rhythm around the circuit.
+    for i in range(0,n,18):
+        var p: Vector3 = sample_points[i]
+        var tangent: Vector3 = sample_tangents[i].normalized()
+        var right: Vector3 = Vector3(-tangent.z,0.0,tangent.x).normalized()
+
+        for side in [-1.0,1.0]:
+            var s: float = float(side)
+            var outer: Vector3 = p+right*s*(road_width*0.5+12.0+float((i/18)%3)*2.8)
+            _build_bamboo_cluster(root,outer,bamboo_mat,bamboo_leaf,i+int(side*5.0))
+
+            if i%36 == 0:
+                var cherry: Vector3 = p+right*s*(road_width*0.5+7.0)+tangent*(2.0*s)
+                _build_cherry_tree(root,cherry,trunk,blossom,i+int(side*11.0))
+
+        # Roadside lanterns remain outside the collision rails.
+        if i%36 == 0:
+            for side in [-1.0,1.0]:
+                var lp: Vector3 = p+right*float(side)*(road_width*0.5+2.3)
+                _build_lantern(root,lp,0.82,lantern,dark_wood)
+
+    # Pagoda landmarks at separated corners.
+    for frac in [0.12,0.38,0.63,0.84]:
+        var idx: int = int(float(n)*float(frac))
+        var p: Vector3 = sample_points[idx]
+        var t: Vector3 = sample_tangents[idx].normalized()
+        var r: Vector3 = Vector3(-t.z,0.0,t.x).normalized()
+        var side: float = -1.0 if int(frac*100.0)%2==0 else 1.0
+        var center: Vector3 = p+r*side*(road_width*0.5+25.0)
+        _build_pagoda(root,center,-r*side,0.88,wall_mat,gold,roof,lantern)
+
+    # High-clearance temple gates: visual landmarks only, no extra collision or ramps.
+    for frac in [0.0,0.52]:
+        var idx: int = int(float(n)*float(frac))%n
+        _build_temple_gate(root,sample_points[idx],sample_tangents[idx].normalized(),0.92,red,roof,gold)
+
+    # Golden dragon statue at the waterfall-side landmark.
+    var dragon_idx: int = int(float(n)*0.70)
+    var dp: Vector3 = sample_points[dragon_idx]
+    var dt: Vector3 = sample_tangents[dragon_idx].normalized()
+    var dr: Vector3 = Vector3(-dt.z,0.0,dt.x).normalized()
+    _build_dragon_statue(root,dp-dr*(road_width*0.5+30.0),1.05,gold,rock)
+
+    # A few real lights sell the night scene without flooding the GPU.
+    for frac in [0.0,0.18,0.38,0.58,0.78]:
+        var idx: int = int(float(n)*float(frac))%n
+        var p: Vector3 = sample_points[idx]
+        var t: Vector3 = sample_tangents[idx].normalized()
+        var r: Vector3 = Vector3(-t.z,0.0,t.x).normalized()
+        var light: OmniLight3D = OmniLight3D.new()
+        light.position = p+r*(road_width*0.5+4.0)+Vector3.UP*4.5
+        light.light_color = Color(1.0,0.56,0.22)
+        light.light_energy = 2.8
+        light.omni_range = 18.0
+        root.add_child(light)
 
 func _build_checkpoints() -> void:
     checkpoint_indices.clear()

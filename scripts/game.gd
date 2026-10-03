@@ -168,18 +168,35 @@ func _build_world() -> void:
     var env_node: WorldEnvironment = WorldEnvironment.new()
     var env: Environment = Environment.new()
     env.background_mode = Environment.BG_COLOR
-    env.background_color = Color(0.40,0.67,0.89)
+    env.background_color = Color(0.018,0.035,0.075)
     env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-    env.ambient_light_color = Color(0.72,0.78,0.74)
-    env.ambient_light_energy = 1.15
+    env.ambient_light_color = Color(0.20,0.27,0.42)
+    env.ambient_light_energy = 0.88
     env_node.environment = env
     add_child(env_node)
 
-    var sun: DirectionalLight3D = DirectionalLight3D.new()
-    sun.rotation_degrees = Vector3(-50,-30,0)
-    sun.light_energy = 1.6
-    sun.shadow_enabled = true
-    add_child(sun)
+    # Cool moonlight over the course.
+    var moon_light: DirectionalLight3D = DirectionalLight3D.new()
+    moon_light.rotation_degrees = Vector3(-48,-28,0)
+    moon_light.light_energy = 1.25
+    moon_light.light_color = Color(0.55,0.66,0.95)
+    moon_light.shadow_enabled = true
+    add_child(moon_light)
+
+    # Visible stylized moon kept far outside the race geometry.
+    var moon: MeshInstance3D = MeshInstance3D.new()
+    var moon_mesh: SphereMesh = SphereMesh.new()
+    moon_mesh.radius = 8.0
+    moon_mesh.height = 14.0
+    moon.mesh = moon_mesh
+    moon.position = Vector3(118.0,92.0,95.0)
+    var moon_mat: StandardMaterial3D = StandardMaterial3D.new()
+    moon_mat.albedo_color = Color(0.92,0.95,1.0)
+    moon_mat.emission_enabled = true
+    moon_mat.emission = Color(0.65,0.76,1.0)
+    moon_mat.emission_energy_multiplier = 1.6
+    moon.material_override = moon_mat
+    add_child(moon)
 
     track = TrackBuilder.new()
     add_child(track)
@@ -189,7 +206,7 @@ func _build_world() -> void:
     race_camera.name = "MainRaceCamera"
     race_camera.fov = 72.0
     race_camera.near = 0.05
-    race_camera.far = 600.0
+    race_camera.far = 700.0
     add_child(race_camera)
     race_camera.global_position = track.sample_points[0] + Vector3(22.0,20.0,26.0)
     race_camera.look_at(track.sample_points[0] + Vector3.UP,Vector3.UP)
