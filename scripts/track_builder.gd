@@ -14,6 +14,7 @@ func setup() -> void:
     _build_track()
     _build_scenery()
     _build_stunt_elements()
+    _build_natural_landmarks()
     _build_checkpoints()
 
 func _sample_track() -> void:
@@ -70,7 +71,7 @@ func _build_ground() -> void:
     var mesh: PlaneMesh = PlaneMesh.new()
     mesh.size = Vector2(410, 370)
     ground.mesh = mesh
-    ground.material_override = _mat(Color(0.10,0.30,0.10))
+    ground.material_override = _mat(Color(0.075,0.245,0.085),0.0,0.96)
     ground.position.y = -0.10
     add_child(ground)
 
@@ -185,34 +186,68 @@ func _build_continuous_road_surface() -> void:
     add_child(road)
 
 func _build_scenery() -> void:
-    var trunk_mat: StandardMaterial3D = _mat(Color(0.22,0.10,0.04))
-    var leaf_mat: StandardMaterial3D = _mat(Color(0.035,0.24,0.07))
-    for i in range(0,sample_points.size(),12):
+    var trunk_mat: StandardMaterial3D = _mat(Color(0.19,0.085,0.035),0.0,0.96)
+    var leaf_mat: StandardMaterial3D = _mat(Color(0.025,0.22,0.065),0.0,0.92)
+    var leaf_light: StandardMaterial3D = _mat(Color(0.08,0.34,0.10),0.0,0.90)
+    var rock_mat: StandardMaterial3D = _mat(Color(0.20,0.23,0.20),0.02,0.98)
+    var bush_mat: StandardMaterial3D = _mat(Color(0.055,0.30,0.075),0.0,0.95)
+
+    for i in range(0,sample_points.size(),8):
         var p: Vector3 = sample_points[i]
         var tangent: Vector3 = sample_tangents[i]
-        var right: Vector3 = Vector3(-tangent.z,0.0,tangent.x)
-        for side in [-1.0,1.0]:
-            var base: Vector3 = p + right * float(side) * (road_width * 0.5 + 8.5)
+        var right: Vector3 = Vector3(-tangent.z,0.0,tangent.x).normalized()
 
+        for side in [-1.0,1.0]:
+            var s: float = float(side)
+            var depth: float = 7.8 + float((i/8)%3)*2.4
+            var base: Vector3 = p + right*s*(road_width*0.5+depth)
+
+            # Mixed-height trees make the forest less repetitive.
+            var tree_scale: float = 0.82 + float((i+int(side))%4)*0.11
             var trunk: MeshInstance3D = MeshInstance3D.new()
             var cyl: CylinderMesh = CylinderMesh.new()
-            cyl.top_radius = 0.30
-            cyl.bottom_radius = 0.44
-            cyl.height = 4.2
+            cyl.top_radius = 0.25*tree_scale
+            cyl.bottom_radius = 0.48*tree_scale
+            cyl.height = 4.4*tree_scale
             trunk.mesh = cyl
-            trunk.position = base + Vector3.UP * 2.1
+            trunk.position = base + Vector3.UP*(2.2*tree_scale)
             trunk.material_override = trunk_mat
             add_child(trunk)
 
-            var crown: MeshInstance3D = MeshInstance3D.new()
-            var cone: CylinderMesh = CylinderMesh.new()
-            cone.top_radius = 0.0
-            cone.bottom_radius = 2.0
-            cone.height = 4.8
-            crown.mesh = cone
-            crown.position = base + Vector3.UP * 5.5
-            crown.material_override = leaf_mat
-            add_child(crown)
+            for crown_i in range(2):
+                var crown: MeshInstance3D = MeshInstance3D.new()
+                var cone: CylinderMesh = CylinderMesh.new()
+                cone.top_radius = 0.0
+                cone.bottom_radius = (2.0-float(crown_i)*0.28)*tree_scale
+                cone.height = (4.4-float(crown_i)*0.45)*tree_scale
+                crown.mesh = cone
+                crown.position = base + Vector3.UP*((5.2+float(crown_i)*1.3)*tree_scale)
+                crown.material_override = leaf_mat if crown_i == 0 else leaf_light
+                add_child(crown)
+
+            # Low bushes close to the road edge.
+            var bush: MeshInstance3D = MeshInstance3D.new()
+            var bush_mesh: SphereMesh = SphereMesh.new()
+            bush_mesh.radius = 0.75
+            bush_mesh.height = 1.1
+            bush.mesh = bush_mesh
+            bush.scale = Vector3(1.35,0.58,0.92)
+            bush.position = p + right*s*(road_width*0.5+3.3) + Vector3.UP*0.48
+            bush.material_override = bush_mat
+            add_child(bush)
+
+            # Irregular boulders farther out.
+            if i % 16 == 0:
+                var rock: MeshInstance3D = MeshInstance3D.new()
+                var rock_mesh: SphereMesh = SphereMesh.new()
+                rock_mesh.radius = 1.18
+                rock_mesh.height = 1.75
+                rock.mesh = rock_mesh
+                rock.scale = Vector3(1.15+0.15*s,0.72,0.95)
+                rock.position = base + tangent*(2.0*s) + Vector3.UP*0.58
+                rock.rotation_degrees = Vector3(0.0,float((i*13)%360),8.0*s)
+                rock.material_override = rock_mat
+                add_child(rock)
 
 func _build_stunt_elements() -> void:
     upper_sections.clear()
@@ -241,13 +276,13 @@ func _build_stunt_elements() -> void:
     _build_ground_boost_pads()
 
 func _build_upper_decks() -> void:
-    var deck_mat: StandardMaterial3D = _mat(Color(0.095,0.115,0.145),0.35,0.46)
-    var edge_mat: StandardMaterial3D = _mat(Color(0.10,0.74,1.0),0.66,0.18)
+    var deck_mat: StandardMaterial3D = _mat(Color(0.18,0.13,0.075),0.08,0.72)
+    var edge_mat: StandardMaterial3D = _mat(Color(0.16,0.36,0.12),0.10,0.52)
     edge_mat.emission_enabled = true
-    edge_mat.emission = Color(0.05,0.46,0.90)
-    edge_mat.emission_energy_multiplier = 2.1
+    edge_mat.emission = Color(0.05,0.22,0.07)
+    edge_mat.emission_energy_multiplier = 0.8
 
-    var support_mat: StandardMaterial3D = _mat(Color(0.11,0.13,0.16),0.50,0.38)
+    var support_mat: StandardMaterial3D = _mat(Color(0.24,0.18,0.10),0.03,0.90)
     var rail_body: StaticBody3D = StaticBody3D.new()
     rail_body.name = "UpperDeckRails"
     add_child(rail_body)
@@ -354,6 +389,129 @@ func _build_ground_boost_pads() -> void:
             stripe.position = Vector3(0.0,0.07,float(z))
             stripe.material_override = arrow_mat
             root.add_child(stripe)
+
+func _build_natural_landmarks() -> void:
+    if sample_points.is_empty():
+        return
+
+    var rock_dark: StandardMaterial3D = _mat(Color(0.13,0.16,0.14),0.02,0.98)
+    var rock_moss: StandardMaterial3D = _mat(Color(0.12,0.24,0.10),0.0,0.96)
+    var water_mat: StandardMaterial3D = _mat(Color(0.055,0.34,0.52),0.08,0.22)
+    water_mat.emission_enabled = true
+    water_mat.emission = Color(0.02,0.13,0.19)
+    water_mat.emission_energy_multiplier = 0.7
+    var flower_mat: StandardMaterial3D = _mat(Color(0.92,0.72,0.24),0.0,0.82)
+
+    var n: int = sample_points.size()
+
+    # A small forest pond next to the first half of the circuit.
+    var pond_idx: int = int(n*0.43)
+    var pp: Vector3 = sample_points[pond_idx]
+    var pt: Vector3 = sample_tangents[pond_idx]
+    var pr: Vector3 = Vector3(-pt.z,0.0,pt.x).normalized()
+    var pond_center: Vector3 = pp + pr*(road_width*0.5+16.0)
+
+    var pond: MeshInstance3D = MeshInstance3D.new()
+    var pond_mesh: CylinderMesh = CylinderMesh.new()
+    pond_mesh.top_radius = 7.5
+    pond_mesh.bottom_radius = 7.9
+    pond_mesh.height = 0.16
+    pond.mesh = pond_mesh
+    pond.position = pond_center + Vector3.UP*0.02
+    pond.material_override = water_mat
+    add_child(pond)
+
+    for i in range(10):
+        var angle: float = TAU*float(i)/10.0
+        var rock: MeshInstance3D = MeshInstance3D.new()
+        var rock_mesh: SphereMesh = SphereMesh.new()
+        rock_mesh.radius = 0.85+float(i%3)*0.17
+        rock_mesh.height = 1.15
+        rock.mesh = rock_mesh
+        rock.scale = Vector3(1.15,0.62,0.90)
+        rock.position = pond_center + Vector3(cos(angle)*7.2,0.42,sin(angle)*7.2)
+        rock.material_override = rock_moss if i%2==0 else rock_dark
+        add_child(rock)
+
+    # Waterfall / cliff landmark on the opposite side of the map.
+    var fall_idx: int = int(n*0.70)
+    var fp: Vector3 = sample_points[fall_idx]
+    var ft: Vector3 = sample_tangents[fall_idx]
+    var fr: Vector3 = Vector3(-ft.z,0.0,ft.x).normalized()
+    var cliff_center: Vector3 = fp - fr*(road_width*0.5+18.0)
+
+    for level in range(5):
+        for side in [-1,0,1]:
+            var cliff: MeshInstance3D = MeshInstance3D.new()
+            var cliff_mesh: SphereMesh = SphereMesh.new()
+            cliff_mesh.radius = 2.2
+            cliff_mesh.height = 3.0
+            cliff.mesh = cliff_mesh
+            cliff.scale = Vector3(1.4,0.95,1.0)
+            cliff.position = cliff_center + Vector3(float(side)*3.0,float(level)*1.65+1.3,float((level+side)%2)*1.2)
+            cliff.material_override = rock_dark if (level+side)%2==0 else rock_moss
+            add_child(cliff)
+
+    var waterfall: MeshInstance3D = MeshInstance3D.new()
+    var waterfall_mesh: BoxMesh = BoxMesh.new()
+    waterfall_mesh.size = Vector3(3.0,7.8,0.18)
+    waterfall.mesh = waterfall_mesh
+    waterfall.position = cliff_center + Vector3(0.0,4.9,-2.1)
+    waterfall.material_override = water_mat
+    add_child(waterfall)
+
+    var pool: MeshInstance3D = MeshInstance3D.new()
+    var pool_mesh: CylinderMesh = CylinderMesh.new()
+    pool_mesh.top_radius = 5.0
+    pool_mesh.bottom_radius = 5.3
+    pool_mesh.height = 0.14
+    pool.mesh = pool_mesh
+    pool.position = cliff_center + Vector3(0.0,0.05,-2.1)
+    pool.material_override = water_mat
+    add_child(pool)
+
+    # Rock arches around the upper-deck entrances.
+    for section in upper_sections:
+        var entrance_idx: int = max(0,int(section["start"])-5)
+        var ep: Vector3 = sample_points[entrance_idx]
+        var et: Vector3 = sample_tangents[entrance_idx].normalized()
+        var er: Vector3 = Vector3(-et.z,0.0,et.x).normalized()
+
+        for side in [-1.0,1.0]:
+            var tower: MeshInstance3D = MeshInstance3D.new()
+            var tower_mesh: SphereMesh = SphereMesh.new()
+            tower_mesh.radius = 1.6
+            tower_mesh.height = 4.8
+            tower.mesh = tower_mesh
+            tower.scale = Vector3(0.90,1.45,0.92)
+            tower.position = ep + er*float(side)*(road_width*0.5+1.8) + Vector3.UP*2.5
+            tower.material_override = rock_moss
+            add_child(tower)
+
+        var cap: MeshInstance3D = MeshInstance3D.new()
+        var cap_mesh: BoxMesh = BoxMesh.new()
+        cap_mesh.size = Vector3(road_width+4.8,1.15,1.6)
+        cap.mesh = cap_mesh
+        cap.position = ep + Vector3.UP*5.0
+        cap.basis = Basis.looking_at(et,Vector3.UP)
+        cap.material_override = rock_moss
+        add_child(cap)
+
+    # Small golden wildflowers around selected curves.
+    for i in range(0,n,18):
+        var p: Vector3 = sample_points[i]
+        var t: Vector3 = sample_tangents[i]
+        var r: Vector3 = Vector3(-t.z,0.0,t.x).normalized()
+        for side in [-1.0,1.0]:
+            for j in range(3):
+                var flower: MeshInstance3D = MeshInstance3D.new()
+                var flower_mesh: SphereMesh = SphereMesh.new()
+                flower_mesh.radius = 0.11
+                flower_mesh.height = 0.16
+                flower.mesh = flower_mesh
+                flower.position = p + r*float(side)*(road_width*0.5+2.2+float(j)*0.45) + t*(float(j)-1.0)*0.7 + Vector3.UP*0.14
+                flower.material_override = flower_mat
+                add_child(flower)
 
 func track_height_at(track_index: int) -> float:
     if sample_points.is_empty():

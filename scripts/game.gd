@@ -844,6 +844,7 @@ func _make_podium_card(rank_number: int, entry: Dictionary, is_player: bool, fir
     var character: PodiumCharacter = PodiumCharacter.new()
     character.custom_minimum_size = Vector2(150,120)
     character.set_body_color(character_color)
+    character.set_dragon_armor(kart_id_value == "gold")
     v.add_child(character)
 
     var name_label: Label = Label.new()
