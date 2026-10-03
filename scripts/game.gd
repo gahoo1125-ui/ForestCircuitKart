@@ -107,19 +107,21 @@ func _follow_camera(cam: Camera3D, kart: KartController, delta: float) -> void:
 
     var boosting: bool = kart.boost_timer > 0.0
     var forward: Vector3 = -kart.global_transform.basis.z.normalized()
-    var target: Vector3 = kart.global_position + forward * (4.8 if boosting else 3.8) + Vector3.UP * 0.78
+    var target: Vector3 = kart.global_position + forward * (5.1 if boosting else 4.35) + Vector3.UP * 0.66
 
-    var follow_distance: float = 10.6 if boosting else 8.4
-    var follow_height: float = 2.85 if boosting else 3.10
+    # Lower and closer than before so the kart occupies more of the screen and
+    # the road-to-kart ratio reads like a dedicated arcade racer.
+    var follow_distance: float = 8.55 if boosting else 7.15
+    var follow_height: float = 2.42 if boosting else 2.55
     var desired: Vector3 = kart.global_position - forward * follow_distance + Vector3.UP * follow_height
 
     if boosting:
         var shake_t: float = float(Time.get_ticks_msec()) * 0.001
-        desired += kart.global_transform.basis.x.normalized() * sin(shake_t * 36.0) * 0.10
-        desired += Vector3.UP * cos(shake_t * 31.0) * 0.055
+        desired += kart.global_transform.basis.x.normalized() * sin(shake_t * 36.0) * 0.085
+        desired += Vector3.UP * cos(shake_t * 31.0) * 0.045
 
-    cam.global_position = cam.global_position.lerp(desired,clamp(delta*(10.0 if boosting else 7.0),0.0,1.0))
-    cam.fov = lerp(cam.fov,96.0 if boosting else 72.0,clamp(delta*6.5,0.0,1.0))
+    cam.global_position = cam.global_position.lerp(desired,clamp(delta*(10.5 if boosting else 8.0),0.0,1.0))
+    cam.fov = lerp(cam.fov,94.0 if boosting else 77.0,clamp(delta*7.0,0.0,1.0))
     cam.look_at(target,Vector3.UP)
 
 func _add_key(action: StringName, keycode: Key) -> void:
@@ -506,8 +508,9 @@ func _snap_main_camera(kart: KartController) -> void:
     if not race_camera:
         return
     var forward: Vector3 = -kart.global_transform.basis.z.normalized()
-    race_camera.global_position = kart.global_position - forward*8.2 + Vector3.UP*4.0
-    race_camera.look_at(kart.global_position + forward*3.5 + Vector3.UP,Vector3.UP)
+    race_camera.global_position = kart.global_position - forward*7.15 + Vector3.UP*2.55
+    race_camera.fov = 77.0
+    race_camera.look_at(kart.global_position + forward*4.35 + Vector3.UP*0.66,Vector3.UP)
     race_camera.make_current()
 
 func _start_lan_host() -> void:

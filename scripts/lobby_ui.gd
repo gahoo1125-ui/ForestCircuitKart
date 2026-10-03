@@ -89,194 +89,159 @@ func _build_ui() -> void:
 
     var bg: ColorRect = ColorRect.new()
     bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    bg.color = Color(0.006,0.018,0.033,0.99)
+    bg.color = Color(0.84,0.92,0.96,1.0)
     root.add_child(bg)
 
-    # Top persistent player bar.
+    # Slim racing-game top bar: player on the left, hub categories in the middle,
+    # currency on the right. The 3D showroom stays dominant.
     var top: PanelContainer = PanelContainer.new()
     top.anchor_left = 0.0
     top.anchor_right = 1.0
-    top.anchor_top = 0.0
-    top.anchor_bottom = 0.0
-    top.offset_left = 16
-    top.offset_right = -16
-    top.offset_top = 12
-    top.offset_bottom = 78
-    top.add_theme_stylebox_override("panel",_panel(Color(0.015,0.040,0.067,0.96),Color(0.18,0.64,0.86,0.72),10))
+    top.offset_bottom = 58.0
+    top.add_theme_stylebox_override("panel",_panel(Color(0.97,0.985,1.0,0.96),Color(0.72,0.82,0.90,0.92),0))
     root.add_child(top)
 
     var top_margin: MarginContainer = MarginContainer.new()
-    top_margin.add_theme_constant_override("margin_left",18)
-    top_margin.add_theme_constant_override("margin_right",18)
-    top_margin.add_theme_constant_override("margin_top",9)
-    top_margin.add_theme_constant_override("margin_bottom",9)
+    top_margin.add_theme_constant_override("margin_left",16)
+    top_margin.add_theme_constant_override("margin_right",16)
+    top_margin.add_theme_constant_override("margin_top",7)
+    top_margin.add_theme_constant_override("margin_bottom",7)
     top.add_child(top_margin)
 
     var top_row: HBoxContainer = HBoxContainer.new()
-    top_row.add_theme_constant_override("separation",16)
+    top_row.add_theme_constant_override("separation",10)
     top_margin.add_child(top_row)
 
     player_label = Label.new()
-    player_label.add_theme_font_size_override("font_size",21)
+    player_label.add_theme_font_size_override("font_size",18)
+    player_label.modulate = Color(0.08,0.12,0.18)
     top_row.add_child(player_label)
 
     level_label = Label.new()
-    level_label.modulate = Color(0.38,0.86,1.0)
+    level_label.add_theme_font_size_override("font_size",15)
+    level_label.modulate = Color(0.10,0.42,0.72)
     top_row.add_child(level_label)
 
     xp_bar = ProgressBar.new()
-    xp_bar.custom_minimum_size = Vector2(250,20)
+    xp_bar.custom_minimum_size = Vector2(150,15)
     xp_bar.show_percentage = false
     xp_bar.min_value = 0
     xp_bar.max_value = 1
-    xp_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     top_row.add_child(xp_bar)
 
-    var spacer: Control = Control.new()
-    spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    top_row.add_child(spacer)
-
-    var gold_icon: Label = Label.new()
-    gold_icon.text = "●"
-    gold_icon.modulate = Color(1.0,0.75,0.12)
-    gold_icon.add_theme_font_size_override("font_size",27)
-    top_row.add_child(gold_icon)
-
-    gold_label = Label.new()
-    gold_label.add_theme_font_size_override("font_size",25)
-    gold_label.modulate = Color(1.0,0.86,0.34)
-    top_row.add_child(gold_label)
-
-    # Main area.
-    var main: HBoxContainer = HBoxContainer.new()
-    main.anchor_left = 0.0
-    main.anchor_right = 1.0
-    main.anchor_top = 0.0
-    main.anchor_bottom = 1.0
-    main.offset_left = 16
-    main.offset_right = -16
-    main.offset_top = 90
-    main.offset_bottom = -62
-    main.add_theme_constant_override("separation",12)
-    root.add_child(main)
-
-    # Navigation rail.
-    var nav_panel: PanelContainer = PanelContainer.new()
-    nav_panel.custom_minimum_size = Vector2(170,0)
-    nav_panel.add_theme_stylebox_override("panel",_panel())
-    main.add_child(nav_panel)
-
-    var nav_margin: MarginContainer = MarginContainer.new()
-    nav_margin.add_theme_constant_override("margin_left",10)
-    nav_margin.add_theme_constant_override("margin_right",10)
-    nav_margin.add_theme_constant_override("margin_top",12)
-    nav_margin.add_theme_constant_override("margin_bottom",12)
-    nav_panel.add_child(nav_margin)
-
-    var nav: VBoxContainer = VBoxContainer.new()
-    nav.add_theme_constant_override("separation",8)
-    nav_margin.add_child(nav)
-
-    var brand: Label = Label.new()
-    brand.text = "FOREST\nRACING HUB"
-    brand.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    brand.add_theme_font_size_override("font_size",20)
-    brand.modulate = Color(0.78,0.95,1.0)
-    nav.add_child(brand)
+    var left_space: Control = Control.new()
+    left_space.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    top_row.add_child(left_space)
 
     for item in [
         ["카트","kart"],["모드","mode"],["맵","map"],["뽑기","gacha"],["장비","equipment"]
     ]:
         var b: Button = Button.new()
         b.text = str(item[0])
-        b.custom_minimum_size = Vector2(0,48)
-        _style_button(b)
+        b.custom_minimum_size = Vector2(72,38)
+        _style_button(b,str(item[1]) == "kart")
         b.pressed.connect(_open_tab.bind(str(item[1])))
-        nav.add_child(b)
+        top_row.add_child(b)
 
-    var nav_space: Control = Control.new()
-    nav_space.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    nav.add_child(nav_space)
+    var right_space: Control = Control.new()
+    right_space.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    top_row.add_child(right_space)
 
-    mode_label = Label.new()
-    mode_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    mode_label.modulate = Color(0.60,0.82,0.94)
-    nav.add_child(mode_label)
+    var gold_icon: Label = Label.new()
+    gold_icon.text = "●"
+    gold_icon.modulate = Color(1.0,0.70,0.06)
+    gold_icon.add_theme_font_size_override("font_size",23)
+    top_row.add_child(gold_icon)
 
-    ip_edit = LineEdit.new()
-    ip_edit.placeholder_text = "호스트 LAN IP"
-    ip_edit.text = "127.0.0.1"
-    nav.add_child(ip_edit)
+    gold_label = Label.new()
+    gold_label.add_theme_font_size_override("font_size",21)
+    gold_label.modulate = Color(0.38,0.28,0.04)
+    top_row.add_child(gold_label)
 
-    network_status_label = Label.new()
-    network_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    network_status_label.modulate = Color(0.54,0.70,0.82)
-    nav.add_child(network_status_label)
+    # Main area: huge 3D plaza showroom + compact management panel.
+    var main: HBoxContainer = HBoxContainer.new()
+    main.anchor_left = 0.0
+    main.anchor_right = 1.0
+    main.anchor_top = 0.0
+    main.anchor_bottom = 1.0
+    main.offset_left = 0.0
+    main.offset_right = 0.0
+    main.offset_top = 58.0
+    main.offset_bottom = -54.0
+    main.add_theme_constant_override("separation",0)
+    root.add_child(main)
 
-    # 3D showroom in the center.
     var show_panel: PanelContainer = PanelContainer.new()
     show_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     show_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    show_panel.custom_minimum_size = Vector2(590,0)
-    show_panel.add_theme_stylebox_override("panel",_panel(Color(0.005,0.022,0.040,0.90),Color(0.13,0.64,0.88,0.82),10))
+    show_panel.add_theme_stylebox_override("panel",_panel(Color(0.70,0.86,0.94,1.0),Color(0.70,0.82,0.90,1.0),0))
     main.add_child(show_panel)
 
-    var show_margin: MarginContainer = MarginContainer.new()
-    show_margin.add_theme_constant_override("margin_left",10)
-    show_margin.add_theme_constant_override("margin_right",10)
-    show_margin.add_theme_constant_override("margin_top",10)
-    show_margin.add_theme_constant_override("margin_bottom",10)
-    show_panel.add_child(show_margin)
-
     var show_v: VBoxContainer = VBoxContainer.new()
-    show_v.add_theme_constant_override("separation",6)
-    show_margin.add_child(show_v)
-
-    selected_label_center = Label.new()
-    selected_label_center.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    selected_label_center.add_theme_font_size_override("font_size",25)
-    show_v.add_child(selected_label_center)
-    selected_label = selected_label_center
+    show_v.add_theme_constant_override("separation",0)
+    show_panel.add_child(show_v)
 
     preview_container = SubViewportContainer.new()
     preview_container.stretch = true
     preview_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    preview_container.custom_minimum_size = Vector2(560,390)
+    preview_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    preview_container.custom_minimum_size = Vector2(720,520)
     preview_container.gui_input.connect(_on_preview_input)
     show_v.add_child(preview_container)
 
     preview_viewport = SubViewport.new()
-    preview_viewport.size = Vector2i(800,520)
+    preview_viewport.size = Vector2i(960,600)
     preview_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
     preview_viewport.own_world_3d = true
     preview_container.add_child(preview_viewport)
     _build_preview_world()
 
+    # Selected machine plate, kept small like a racing lobby nameplate.
+    var name_plate: PanelContainer = PanelContainer.new()
+    name_plate.anchor_left = 0.5
+    name_plate.anchor_right = 0.5
+    name_plate.anchor_top = 0.18
+    name_plate.anchor_bottom = 0.18
+    name_plate.offset_left = -165
+    name_plate.offset_right = 165
+    name_plate.offset_top = -20
+    name_plate.offset_bottom = 26
+    name_plate.add_theme_stylebox_override("panel",_panel(Color(0.08,0.12,0.17,0.68),Color(0.72,0.84,0.93,0.65),3))
+    root.add_child(name_plate)
+
+    selected_label_center = Label.new()
+    selected_label_center.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    selected_label_center.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    selected_label_center.add_theme_font_size_override("font_size",17)
+    selected_label_center.modulate = Color(0.98,0.99,1.0)
+    name_plate.add_child(selected_label_center)
+    selected_label = selected_label_center
+
     description_label = Label.new()
+    description_label.anchor_left = 0.5
+    description_label.anchor_right = 0.5
+    description_label.anchor_top = 1.0
+    description_label.anchor_bottom = 1.0
+    description_label.offset_left = -280
+    description_label.offset_right = 280
+    description_label.offset_top = -92
+    description_label.offset_bottom = -66
     description_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    description_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    description_label.modulate = Color(0.72,0.82,0.90)
-    show_v.add_child(description_label)
+    description_label.modulate = Color(0.08,0.12,0.18,0.88)
+    root.add_child(description_label)
 
-    start_button = Button.new()
-    start_button.text = "RACE START"
-    start_button.custom_minimum_size = Vector2(0,62)
-    start_button.add_theme_font_size_override("font_size",23)
-    _style_button(start_button,true)
-    start_button.pressed.connect(_on_start_pressed)
-    show_v.add_child(start_button)
-
-    # Dynamic right hub panel.
+    # Compact management panel on the right; the world remains visible behind it.
     var content_panel: PanelContainer = PanelContainer.new()
-    content_panel.custom_minimum_size = Vector2(385,0)
-    content_panel.add_theme_stylebox_override("panel",_panel())
+    content_panel.custom_minimum_size = Vector2(355,0)
+    content_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    content_panel.add_theme_stylebox_override("panel",_panel(Color(0.015,0.035,0.055,0.88),Color(0.18,0.56,0.78,0.72),0))
     main.add_child(content_panel)
 
     var content_margin: MarginContainer = MarginContainer.new()
-    content_margin.add_theme_constant_override("margin_left",14)
-    content_margin.add_theme_constant_override("margin_right",14)
+    content_margin.add_theme_constant_override("margin_left",13)
+    content_margin.add_theme_constant_override("margin_right",13)
     content_margin.add_theme_constant_override("margin_top",12)
-    content_margin.add_theme_constant_override("margin_bottom",12)
+    content_margin.add_theme_constant_override("margin_bottom",70)
     content_panel.add_child(content_margin)
 
     content_root = VBoxContainer.new()
@@ -284,68 +249,205 @@ func _build_ui() -> void:
     content_margin.add_child(content_root)
 
     tab_title = Label.new()
-    tab_title.add_theme_font_size_override("font_size",24)
-    tab_title.modulate = Color(0.38,0.86,1.0)
+    tab_title.add_theme_font_size_override("font_size",22)
+    tab_title.modulate = Color(0.42,0.88,1.0)
     content_root.add_child(tab_title)
 
-    # Bottom message strip.
+    # Bottom control strip.
+    var bottom: PanelContainer = PanelContainer.new()
+    bottom.anchor_left = 0.0
+    bottom.anchor_right = 1.0
+    bottom.anchor_top = 1.0
+    bottom.anchor_bottom = 1.0
+    bottom.offset_top = -54
+    bottom.add_theme_stylebox_override("panel",_panel(Color(0.96,0.98,1.0,0.97),Color(0.72,0.82,0.90,0.92),0))
+    root.add_child(bottom)
+
     result_label = Label.new()
     result_label.anchor_left = 0.0
     result_label.anchor_right = 1.0
     result_label.anchor_top = 1.0
     result_label.anchor_bottom = 1.0
     result_label.offset_left = 18
-    result_label.offset_right = -18
-    result_label.offset_top = -50
-    result_label.offset_bottom = -14
+    result_label.offset_right = -290
+    result_label.offset_top = -46
+    result_label.offset_bottom = -12
     result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    result_label.add_theme_font_size_override("font_size",16)
-    result_label.modulate = Color(0.78,0.90,1.0)
+    result_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    result_label.add_theme_font_size_override("font_size",15)
+    result_label.modulate = Color(0.12,0.18,0.24)
     root.add_child(result_label)
+
+    mode_label = Label.new()
+    mode_label.anchor_left = 0.0
+    mode_label.anchor_top = 1.0
+    mode_label.anchor_bottom = 1.0
+    mode_label.offset_left = 16
+    mode_label.offset_right = 230
+    mode_label.offset_top = -47
+    mode_label.offset_bottom = -12
+    mode_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    mode_label.modulate = Color(0.14,0.30,0.44)
+    root.add_child(mode_label)
+
+    network_status_label = Label.new()
+    network_status_label.visible = false
+    root.add_child(network_status_label)
+
+    ip_edit = LineEdit.new()
+    ip_edit.text = "127.0.0.1"
+    ip_edit.visible = false
+    root.add_child(ip_edit)
+
+    start_button = Button.new()
+    start_button.text = "게임 선택  ▶"
+    start_button.anchor_left = 1.0
+    start_button.anchor_right = 1.0
+    start_button.anchor_top = 1.0
+    start_button.anchor_bottom = 1.0
+    start_button.offset_left = -260
+    start_button.offset_right = -20
+    start_button.offset_top = -112
+    start_button.offset_bottom = -62
+    start_button.add_theme_font_size_override("font_size",20)
+    var start_normal: StyleBoxFlat = _panel(Color(1.0,0.76,0.04,0.98),Color(1.0,0.90,0.32,1.0),2)
+    var start_hover: StyleBoxFlat = _panel(Color(1.0,0.84,0.10,1.0),Color(1.0,0.96,0.54,1.0),2)
+    start_button.add_theme_stylebox_override("normal",start_normal)
+    start_button.add_theme_stylebox_override("hover",start_hover)
+    start_button.add_theme_color_override("font_color",Color(0.08,0.10,0.13))
+    start_button.pressed.connect(_on_start_pressed)
+    root.add_child(start_button)
+
+func _preview_mat(color: Color, metallic: float = 0.0, roughness: float = 0.75) -> StandardMaterial3D:
+    var m: StandardMaterial3D = StandardMaterial3D.new()
+    m.albedo_color = color
+    m.metallic = metallic
+    m.roughness = roughness
+    return m
+
+func _preview_box(pos: Vector3, size: Vector3, mat: StandardMaterial3D) -> MeshInstance3D:
+    var mi: MeshInstance3D = MeshInstance3D.new()
+    var mesh: BoxMesh = BoxMesh.new()
+    mesh.size = size
+    mi.mesh = mesh
+    mi.position = pos
+    mi.material_override = mat
+    preview_viewport.add_child(mi)
+    return mi
+
+func _preview_tree(pos: Vector3, crown_color: Color) -> void:
+    var trunk: MeshInstance3D = MeshInstance3D.new()
+    var trunk_mesh: CylinderMesh = CylinderMesh.new()
+    trunk_mesh.top_radius = 0.13
+    trunk_mesh.bottom_radius = 0.18
+    trunk_mesh.height = 2.0
+    trunk.mesh = trunk_mesh
+    trunk.position = pos + Vector3.UP
+    trunk.material_override = _preview_mat(Color(0.30,0.16,0.08),0.0,0.92)
+    preview_viewport.add_child(trunk)
+
+    var crown: MeshInstance3D = MeshInstance3D.new()
+    var crown_mesh: SphereMesh = SphereMesh.new()
+    crown_mesh.radius = 1.05
+    crown_mesh.height = 1.65
+    crown.mesh = crown_mesh
+    crown.scale = Vector3(1.15,0.86,1.05)
+    crown.position = pos + Vector3.UP*2.45
+    crown.material_override = _preview_mat(crown_color,0.0,0.86)
+    preview_viewport.add_child(crown)
+
+func _preview_lamp(pos: Vector3) -> void:
+    var pole: MeshInstance3D = MeshInstance3D.new()
+    var pm: CylinderMesh = CylinderMesh.new()
+    pm.top_radius = 0.055
+    pm.bottom_radius = 0.075
+    pm.height = 3.6
+    pole.mesh = pm
+    pole.position = pos + Vector3.UP*1.8
+    pole.material_override = _preview_mat(Color(0.11,0.15,0.18),0.55,0.30)
+    preview_viewport.add_child(pole)
+
+    var lamp: MeshInstance3D = MeshInstance3D.new()
+    var lm: SphereMesh = SphereMesh.new()
+    lm.radius = 0.18
+    lm.height = 0.28
+    lamp.mesh = lm
+    lamp.position = pos + Vector3(0.0,3.55,0.0)
+    var glow: StandardMaterial3D = _preview_mat(Color(0.95,0.98,1.0),0.05,0.18)
+    glow.emission_enabled = true
+    glow.emission = Color(0.50,0.75,1.0)
+    glow.emission_energy_multiplier = 1.8
+    lamp.material_override = glow
+    preview_viewport.add_child(lamp)
 
 func _build_preview_world() -> void:
     var env_node: WorldEnvironment = WorldEnvironment.new()
     var env: Environment = Environment.new()
     env.background_mode = Environment.BG_COLOR
-    env.background_color = Color(0.006,0.020,0.038)
+    env.background_color = Color(0.60,0.84,0.95)
     env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-    env.ambient_light_color = Color(0.62,0.70,0.84)
-    env.ambient_light_energy = 1.35
+    env.ambient_light_color = Color(0.92,0.96,1.0)
+    env.ambient_light_energy = 1.15
     env_node.environment = env
     preview_viewport.add_child(env_node)
 
-    var key: DirectionalLight3D = DirectionalLight3D.new()
-    key.rotation_degrees = Vector3(-48,-32,0)
-    key.light_energy = 2.2
-    key.shadow_enabled = true
-    preview_viewport.add_child(key)
+    var sun: DirectionalLight3D = DirectionalLight3D.new()
+    sun.rotation_degrees = Vector3(-52,-25,0)
+    sun.light_energy = 1.75
+    sun.shadow_enabled = true
+    preview_viewport.add_child(sun)
 
-    var rim: OmniLight3D = OmniLight3D.new()
-    rim.position = Vector3(3.5,3.2,1.4)
-    rim.light_energy = 4.0
-    rim.omni_range = 11.0
-    rim.light_color = Color(0.18,0.78,1.0)
-    preview_viewport.add_child(rim)
+    var fill: OmniLight3D = OmniLight3D.new()
+    fill.position = Vector3(-3.5,3.0,-3.0)
+    fill.light_energy = 2.2
+    fill.omni_range = 13.0
+    fill.light_color = Color(0.70,0.86,1.0)
+    preview_viewport.add_child(fill)
 
-    var floor: MeshInstance3D = MeshInstance3D.new()
-    var floor_mesh: CylinderMesh = CylinderMesh.new()
-    floor_mesh.top_radius = 4.2
-    floor_mesh.bottom_radius = 4.35
-    floor_mesh.height = 0.14
-    floor.mesh = floor_mesh
-    floor.position.y = -0.08
-    var floor_mat: StandardMaterial3D = StandardMaterial3D.new()
-    floor_mat.albedo_color = Color(0.018,0.070,0.100)
-    floor_mat.metallic = 0.72
-    floor_mat.roughness = 0.26
-    floor.material_override = floor_mat
-    preview_viewport.add_child(floor)
+    # Wide asphalt plaza similar in composition to a kart-racing lobby.
+    var plaza: MeshInstance3D = MeshInstance3D.new()
+    var plaza_mesh: PlaneMesh = PlaneMesh.new()
+    plaza_mesh.size = Vector2(38,26)
+    plaza.mesh = plaza_mesh
+    plaza.position.y = -0.03
+    plaza.material_override = _preview_mat(Color(0.17,0.20,0.22),0.02,0.86)
+    preview_viewport.add_child(plaza)
+
+    _preview_box(Vector3(0,0.08,5.25),Vector3(38,0.18,2.0),_preview_mat(Color(0.88,0.90,0.90),0.0,0.82))
+    _preview_box(Vector3(0,0.20,6.0),Vector3(38,0.22,0.28),_preview_mat(Color(0.76,0.80,0.82),0.0,0.72))
+
+    # Small colorful town background.
+    var house_x: Array[float] = [-8.0,-4.2,0.0,4.4,8.2]
+    for i in range(house_x.size()):
+        var x: float = house_x[i]
+        var h: float = 3.2 + float(i%3)*0.55
+        var body_color: Color = [
+            Color(0.88,0.86,0.78),
+            Color(0.82,0.90,0.92),
+            Color(0.95,0.88,0.82),
+            Color(0.86,0.92,0.84),
+            Color(0.90,0.84,0.88)
+        ][i]
+        _preview_box(Vector3(x,h*0.5,8.4),Vector3(3.1,h,2.5),_preview_mat(body_color,0.0,0.90))
+        var roof: MeshInstance3D = _preview_box(Vector3(x,h+0.45,8.4),Vector3(3.6,0.85,2.9),_preview_mat(Color(0.56,0.18+0.04*float(i%2),0.12),0.0,0.84))
+        roof.rotation_degrees.z = 4.0 if i%2==0 else -4.0
+
+    for p in [Vector3(-6.6,0,4.9),Vector3(-2.8,0,5.1),Vector3(3.0,0,5.0),Vector3(6.8,0,5.1)]:
+        _preview_tree(p,Color(0.95,0.54,0.68))
+
+    for p in [Vector3(-8.6,0,3.9),Vector3(-4.7,0,4.0),Vector3(4.7,0,4.0),Vector3(8.6,0,3.9)]:
+        _preview_lamp(p)
+
+    # Planters / benches make the scene feel inhabited without stealing focus.
+    for x in [-5.2,5.2]:
+        _preview_box(Vector3(float(x),0.32,4.35),Vector3(2.2,0.55,0.75),_preview_mat(Color(0.64,0.48,0.32),0.0,0.88))
+        _preview_box(Vector3(float(x),0.72,4.35),Vector3(1.85,0.32,0.65),_preview_mat(Color(0.12,0.46,0.18),0.0,0.92))
 
     var camera: Camera3D = Camera3D.new()
-    camera.fov = 43.0
-    camera.position = Vector3(5.0,2.65,-7.3)
+    camera.fov = 39.0
+    camera.position = Vector3(0.0,2.65,-10.6)
     preview_viewport.add_child(camera)
-    camera.look_at(Vector3(0,0.65,0),Vector3.UP)
+    camera.look_at(Vector3(0.0,0.95,0.45),Vector3.UP)
     camera.make_current()
 
 func _clear_content() -> void:
@@ -613,12 +715,15 @@ func _spawn_preview(id: String) -> void:
     preview_kart.setup_preview(id)
     preview_kart.apply_upgrade_level(get_upgrade_level(id))
     preview_kart.apply_equipment(get_equipped_equipment())
-    preview_kart.position = Vector3(-0.55,0.18,0.0)
-    preview_kart.rotation.y = deg_to_rad(22.0)
+    preview_kart.position = Vector3(1.25,0.15,0.15)
+    preview_kart.rotation.y = deg_to_rad(-10.0)
+    preview_kart.scale = Vector3(1.12,1.12,1.12)
 
     preview_character = _create_preview_character(id)
     preview_viewport.add_child(preview_character)
-    preview_character.position = Vector3(1.65,0.0,0.25)
+    preview_character.position = Vector3(-1.35,0.0,0.55)
+    preview_character.rotation.y = deg_to_rad(7.0)
+    preview_character.scale = Vector3(1.18,1.18,1.18)
     preview_auto_rotate = true
 
 func _create_preview_character(id: String) -> Node3D:
@@ -682,9 +787,9 @@ func _create_preview_character(id: String) -> Node3D:
 func _process(delta: float) -> void:
     if preview_auto_rotate and not preview_dragging:
         if preview_kart and is_instance_valid(preview_kart):
-            preview_kart.rotate_y(delta*0.38)
+            preview_kart.rotate_y(delta*0.20)
         if preview_character and is_instance_valid(preview_character):
-            preview_character.rotate_y(delta*0.38)
+            preview_character.position.y = sin(float(Time.get_ticks_msec())*0.0022)*0.025
 
 func _on_preview_input(event: InputEvent) -> void:
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
