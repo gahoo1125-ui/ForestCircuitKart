@@ -24,6 +24,8 @@ var race_locked: bool = false
 var jump_height: float = 0.0
 var jump_velocity: float = 0.0
 var jump_cooldown: float = 0.0
+var boost_pad_cooldown: float = 0.0
+var ride_height: float = 0.0
 
 # Arcade handling tuning: glued-down grip, instant steering and strong bodyfight.
 const ARCADE_GRIP_MULT: float = 2.45
@@ -57,6 +59,7 @@ func setup(id: String, track_ref: TrackBuilder, mode: String = "player1", spawn_
 
     _build_kart()
     global_transform = track.spawn_transform_at(spawn_index,lane_offset)
+    ride_height = track.track_height_at(posmod(spawn_index,track.sample_points.size()))
     remote_position = global_position
     remote_yaw = rotation.y
     started_at = Time.get_ticks_msec()
@@ -769,14 +772,13 @@ func _physics_process(delta: float) -> void:
 
     if jump_cooldown > 0.0:
         jump_cooldown = max(0.0,jump_cooldown-delta)
+    if boost_pad_cooldown > 0.0:
+        boost_pad_cooldown = max(0.0,boost_pad_cooldown-delta)
 
-    var airborne: bool = jump_height > 0.001 or jump_velocity > 0.001
-    if airborne:
-        jump_velocity -= 22.0 * delta
-        jump_height += jump_velocity * delta
-        if jump_height <= 0.0:
-            jump_height = 0.0
-            jump_velocity = 0.0
+    # No free-flight jump physics anymore. Ramps are controlled transitions to upper decks.
+    jump_height = 0.0
+    jump_velocity = 0.0
+    var airborne: bool = false
 
     # Fast input response: much less inertia between key press and acceleration.
     var smooth_t: float = 1.0 - exp(-THROTTLE_RESPONSE * delta)
@@ -878,15 +880,22 @@ func _physics_process(delta: float) -> void:
         if abs(speed_before_collision) > 2.0:
             forward_speed = sign(speed_before_collision) * max(abs(forward_speed),abs(speed_before_collision)*keep_ratio)
 
-    # Ground magnet: outside intentional stunt jumps, force the kart to track height.
-    global_position.y = 0.55 + jump_height
-
     var info: Dictionary = track.nearest_track_info(global_position)
-    var jump_strength: float = track.jump_strength_at(int(info["index"]))
-    if jump_strength > 0.0 and jump_cooldown <= 0.0 and jump_height <= 0.001 and abs(forward_speed) > 10.0:
-        jump_velocity = jump_strength + min(abs(forward_speed) * 0.045,2.0)
-        jump_height = 0.03
-        jump_cooldown = 1.35
+    var track_idx: int = int(info["index"])
+
+    # Hard course containment: even at high speed the kart cannot hop over a guardrail.
+    global_position = track.confine_to_road(global_position,track_idx)
+
+    # Smoothly follow ramps onto the second floor and back down.
+    var target_height: float = track.track_height_at(track_idx)
+    ride_height = move_toward(ride_height,target_height,7.5*delta)
+    global_position.y = 0.55 + ride_height
+
+    # Ground-floor pads give a short automatic acceleration burst.
+    if target_height < 0.25 and track.boost_pad_at(track_idx) and boost_pad_cooldown <= 0.0:
+        boost_pad_cooldown = 1.15
+        boost_timer = max(boost_timer,0.90)
+        forward_speed = max(forward_speed,float(stats.get("max_speed",36.0))*0.72)
 
     var offroad: bool = float(info["distance"]) > track.road_width * 0.58
     if offroad:
@@ -901,6 +910,8 @@ func _physics_process(delta: float) -> void:
         jump_height = 0.0
         jump_velocity = 0.0
         jump_cooldown = 0.6
+        boost_pad_cooldown = 0.5
+        ride_height = track.track_height_at(int(info["index"]))
 
     hud_update.emit(int(abs(forward_speed)*3.6),lap,n2o_count,clamp(drift_charge,0.0,100.0),offroad)
 

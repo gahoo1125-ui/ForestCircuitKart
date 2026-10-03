@@ -2,7 +2,8 @@ extends Node3D
 class_name TrackBuilder
 
 var road_width: float = 23.5
-var jump_indices: Array[int] = []
+var upper_sections: Array[Dictionary] = []
+var boost_indices: Array[int] = []
 var sample_points: Array[Vector3] = []
 var sample_tangents: Array[Vector3] = []
 var checkpoint_indices: Array[int] = []
@@ -109,11 +110,11 @@ func _build_track() -> void:
         for side in [-1.0,1.0]:
             var side_value: float = float(side)
             var right: Vector3 = Vector3(-tangent.z,0.0,tangent.x)
-            var rail_pos: Vector3 = mid + right * side_value * (road_width * 0.5 + 0.45) + Vector3.UP * 0.58
+            var rail_pos: Vector3 = mid + right * side_value * (road_width * 0.5 + 0.45) + Vector3.UP * 1.15
 
             var rail: MeshInstance3D = MeshInstance3D.new()
             var rail_mesh: BoxMesh = BoxMesh.new()
-            rail_mesh.size = Vector3(0.40,1.05,length + 0.75)
+            rail_mesh.size = Vector3(0.46,2.30,length + 0.75)
             rail.mesh = rail_mesh
             rail.position = rail_pos
             rail.rotation.y = yaw
@@ -121,7 +122,7 @@ func _build_track() -> void:
             add_child(rail)
 
             var rail_shape: BoxShape3D = BoxShape3D.new()
-            rail_shape.size = Vector3(0.40,1.05,length + 0.75)
+            rail_shape.size = Vector3(0.46,2.30,length + 0.75)
             var rail_col: CollisionShape3D = CollisionShape3D.new()
             rail_col.shape = rail_shape
             rail_col.position = rail_pos
@@ -214,107 +215,198 @@ func _build_scenery() -> void:
             add_child(crown)
 
 func _build_stunt_elements() -> void:
-    jump_indices.clear()
+    upper_sections.clear()
+    boost_indices.clear()
     if sample_points.is_empty():
         return
 
     var n: int = sample_points.size()
-    jump_indices = [
-        int(n * 0.14),
-        int(n * 0.36),
-        int(n * 0.61),
-        int(n * 0.83)
+
+    # Two real upper-deck sections. Entry/exit transitions act as the old "jump"
+    # elements, but now they lift the kart onto another floor instead of launching it.
+    upper_sections = [
+        {"start":int(n*0.16),"end":int(n*0.31),"height":4.6,"transition":14},
+        {"start":int(n*0.60),"end":int(n*0.75),"height":5.2,"transition":14}
     ]
 
-    var ramp_mat: StandardMaterial3D = _mat(Color(0.12,0.14,0.18),0.62,0.30)
-    ramp_mat.emission_enabled = true
-    ramp_mat.emission = Color(0.035,0.045,0.07)
-    ramp_mat.emission_energy_multiplier = 1.4
+    # Ground-floor speed pads replace the old free-flight ramps.
+    boost_indices = [
+        int(n*0.055),
+        int(n*0.405),
+        int(n*0.505),
+        int(n*0.855)
+    ]
 
-    var edge_mat: StandardMaterial3D = _mat(Color(1.0,0.68,0.08),0.78,0.16)
+    _build_upper_decks()
+    _build_ground_boost_pads()
+
+func _build_upper_decks() -> void:
+    var deck_mat: StandardMaterial3D = _mat(Color(0.095,0.115,0.145),0.35,0.46)
+    var edge_mat: StandardMaterial3D = _mat(Color(0.10,0.74,1.0),0.66,0.18)
     edge_mat.emission_enabled = true
-    edge_mat.emission = Color(1.0,0.38,0.025)
-    edge_mat.emission_energy_multiplier = 2.6
+    edge_mat.emission = Color(0.05,0.46,0.90)
+    edge_mat.emission_energy_multiplier = 2.1
 
-    for ramp_i in range(jump_indices.size()):
-        var idx: int = jump_indices[ramp_i]
+    var support_mat: StandardMaterial3D = _mat(Color(0.11,0.13,0.16),0.50,0.38)
+    var rail_body: StaticBody3D = StaticBody3D.new()
+    rail_body.name = "UpperDeckRails"
+    add_child(rail_body)
+
+    var n: int = sample_points.size()
+    for section_index in range(upper_sections.size()):
+        var section: Dictionary = upper_sections[section_index]
+        var start_idx: int = int(section["start"])
+        var end_idx: int = int(section["end"])
+        var trans: int = int(section["transition"])
+
+        for step in range(-trans,end_idx-start_idx+trans+1):
+            var idx: int = posmod(start_idx+step,n)
+            var next_idx: int = posmod(idx+1,n)
+            var h0: float = track_height_at(idx)
+            var h1: float = track_height_at(next_idx)
+
+            if h0 <= 0.02 and h1 <= 0.02:
+                continue
+
+            var a: Vector3 = sample_points[idx] + Vector3.UP*h0
+            var b: Vector3 = sample_points[next_idx] + Vector3.UP*h1
+            var mid: Vector3 = (a+b)*0.5
+            var dir: Vector3 = (b-a).normalized()
+            var length: float = a.distance_to(b)
+
+            var deck: MeshInstance3D = MeshInstance3D.new()
+            var deck_mesh: BoxMesh = BoxMesh.new()
+            deck_mesh.size = Vector3(road_width,0.28,length+0.45)
+            deck.mesh = deck_mesh
+            deck.global_position = mid
+            deck.basis = Basis.looking_at(dir,Vector3.UP)
+            deck.material_override = deck_mat
+            add_child(deck)
+
+            # Tall rails on the upper deck prevent skipping the course by hopping the wall.
+            var right: Vector3 = Vector3(-dir.z,0.0,dir.x).normalized()
+            for side in [-1.0,1.0]:
+                var rail_pos: Vector3 = mid + right*float(side)*(road_width*0.5+0.42) + Vector3.UP*1.25
+
+                var rail: MeshInstance3D = MeshInstance3D.new()
+                var rail_mesh: BoxMesh = BoxMesh.new()
+                rail_mesh.size = Vector3(0.46,2.5,length+0.52)
+                rail.mesh = rail_mesh
+                rail.global_position = rail_pos
+                rail.basis = Basis.looking_at(dir,Vector3.UP)
+                rail.material_override = edge_mat
+                add_child(rail)
+
+                var rail_shape: BoxShape3D = BoxShape3D.new()
+                rail_shape.size = Vector3(0.46,2.5,length+0.52)
+                var rail_col: CollisionShape3D = CollisionShape3D.new()
+                rail_col.shape = rail_shape
+                rail_col.global_position = rail_pos
+                rail_col.basis = Basis.looking_at(dir,Vector3.UP)
+                rail_body.add_child(rail_col)
+
+            # Supports make the second floor read clearly as an elevated structure.
+            if step % 8 == 0 and h0 > 1.0:
+                for side in [-1.0,1.0]:
+                    var pillar: MeshInstance3D = MeshInstance3D.new()
+                    var pillar_mesh: BoxMesh = BoxMesh.new()
+                    pillar_mesh.size = Vector3(0.75,h0,0.75)
+                    pillar.mesh = pillar_mesh
+                    pillar.position = sample_points[idx] + Vector3(-sample_tangents[idx].z,0.0,sample_tangents[idx].x).normalized()*float(side)*(road_width*0.38) + Vector3.UP*(h0*0.5)
+                    pillar.material_override = support_mat
+                    add_child(pillar)
+
+func _build_ground_boost_pads() -> void:
+    var pad_mat: StandardMaterial3D = _mat(Color(0.02,0.35,0.62),0.50,0.16)
+    pad_mat.emission_enabled = true
+    pad_mat.emission = Color(0.03,0.66,1.0)
+    pad_mat.emission_energy_multiplier = 4.2
+
+    var arrow_mat: StandardMaterial3D = _mat(Color(0.68,0.95,1.0),0.25,0.10)
+    arrow_mat.emission_enabled = true
+    arrow_mat.emission = Color(0.22,0.85,1.0)
+    arrow_mat.emission_energy_multiplier = 5.0
+
+    for pad_i in range(boost_indices.size()):
+        var idx: int = boost_indices[pad_i]
         var p: Vector3 = sample_points[idx]
         var t: Vector3 = sample_tangents[idx].normalized()
-        var right: Vector3 = Vector3(-t.z,0.0,t.x).normalized()
 
         var root: Node3D = Node3D.new()
-        root.name = "JumpRamp_%d" % (ramp_i + 1)
-        root.position = p + Vector3.UP * 0.28
+        root.name = "GroundBoost_%d" % (pad_i+1)
+        root.position = p + Vector3.UP*0.09
         root.basis = Basis.looking_at(t,Vector3.UP)
         add_child(root)
 
-        var ramp: MeshInstance3D = MeshInstance3D.new()
-        var ramp_mesh: BoxMesh = BoxMesh.new()
-        ramp_mesh.size = Vector3(road_width * 0.60,0.34,6.8)
-        ramp.mesh = ramp_mesh
-        ramp.position = Vector3(0.0,0.34,0.0)
-        ramp.rotation_degrees.x = -8.0
-        ramp.material_override = ramp_mat
-        root.add_child(ramp)
+        var pad: MeshInstance3D = MeshInstance3D.new()
+        var pad_mesh: BoxMesh = BoxMesh.new()
+        pad_mesh.size = Vector3(road_width*0.56,0.08,5.6)
+        pad.mesh = pad_mesh
+        pad.material_override = pad_mat
+        root.add_child(pad)
 
-        for side in [-1.0,1.0]:
-            var edge: MeshInstance3D = MeshInstance3D.new()
-            var edge_mesh: BoxMesh = BoxMesh.new()
-            edge_mesh.size = Vector3(0.16,0.12,6.9)
-            edge.mesh = edge_mesh
-            edge.position = Vector3(float(side) * road_width * 0.29,0.58,0.0)
-            edge.rotation_degrees.x = -8.0
-            edge.material_override = edge_mat
-            root.add_child(edge)
+        # Three luminous forward stripes make it obvious that this is a speed pad.
+        for z in [-1.45,0.0,1.45]:
+            var stripe: MeshInstance3D = MeshInstance3D.new()
+            var stripe_mesh: BoxMesh = BoxMesh.new()
+            stripe_mesh.size = Vector3(road_width*0.42,0.04,0.34)
+            stripe.mesh = stripe_mesh
+            stripe.position = Vector3(0.0,0.07,float(z))
+            stripe.material_override = arrow_mat
+            root.add_child(stripe)
 
-        # Floating landing gate makes the airborne section easy to read.
-        var landing_idx: int = posmod(idx + 16,n)
-        var lp: Vector3 = sample_points[landing_idx]
-        var lt: Vector3 = sample_tangents[landing_idx].normalized()
-        var lr: Vector3 = Vector3(-lt.z,0.0,lt.x).normalized()
-
-        for side in [-1.0,1.0]:
-            var pillar: MeshInstance3D = MeshInstance3D.new()
-            var pillar_mesh: BoxMesh = BoxMesh.new()
-            pillar_mesh.size = Vector3(0.28,5.2,0.28)
-            pillar.mesh = pillar_mesh
-            pillar.position = lp + lr * float(side) * 5.6 + Vector3.UP * 2.6
-            pillar.material_override = edge_mat
-            add_child(pillar)
-
-        var top_gate: MeshInstance3D = MeshInstance3D.new()
-        var top_mesh: BoxMesh = BoxMesh.new()
-        top_mesh.size = Vector3(11.5,0.30,0.30)
-        top_gate.mesh = top_mesh
-        top_gate.position = lp + Vector3.UP * 5.05
-        top_gate.basis = Basis.looking_at(lt,Vector3.UP)
-        top_gate.material_override = edge_mat
-        add_child(top_gate)
-
-    # Two elevated-looking side structures to give the course more vertical character.
-    for frac in [0.25,0.72]:
-        var idx: int = int(float(n) * float(frac))
-        var p: Vector3 = sample_points[idx]
-        var t: Vector3 = sample_tangents[idx].normalized()
-        var right: Vector3 = Vector3(-t.z,0.0,t.x).normalized()
-
-        for side in [-1.0,1.0]:
-            var tower: MeshInstance3D = MeshInstance3D.new()
-            var tower_mesh: BoxMesh = BoxMesh.new()
-            tower_mesh.size = Vector3(3.4,7.0,5.0)
-            tower.mesh = tower_mesh
-            tower.position = p + right * float(side) * (road_width * 0.5 + 6.2) + Vector3.UP * 3.5
-            tower.basis = Basis.looking_at(t,Vector3.UP)
-            tower.material_override = _mat(Color(0.16,0.18,0.22),0.35,0.48)
-            add_child(tower)
-
-func jump_strength_at(track_index: int) -> float:
+func track_height_at(track_index: int) -> float:
     if sample_points.is_empty():
         return 0.0
-    for i in range(jump_indices.size()):
-        if circular_index_distance(track_index,jump_indices[i]) <= 2:
-            return 9.2 + float(i % 2) * 1.3
+
+    var n: int = sample_points.size()
+    var idx: int = posmod(track_index,n)
+
+    for section in upper_sections:
+        var start_idx: int = int(section["start"])
+        var end_idx: int = int(section["end"])
+        var height: float = float(section["height"])
+        var transition: int = int(section["transition"])
+
+        var rise_start: int = posmod(start_idx-transition,n)
+        var fall_end: int = posmod(end_idx+transition,n)
+
+        # Sections used here do not wrap around index zero, so ordinary ranges are stable.
+        if idx >= start_idx and idx <= end_idx:
+            return height
+        if idx >= start_idx-transition and idx < start_idx:
+            var t: float = float(idx-(start_idx-transition))/float(max(1,transition))
+            return smoothstep(0.0,1.0,t)*height
+        if idx > end_idx and idx <= end_idx+transition:
+            var t: float = float(idx-end_idx)/float(max(1,transition))
+            return (1.0-smoothstep(0.0,1.0,t))*height
+
     return 0.0
+
+func boost_pad_at(track_index: int) -> bool:
+    for idx in boost_indices:
+        if circular_index_distance(track_index,idx) <= 2:
+            return true
+    return false
+
+func confine_to_road(world_pos: Vector3, track_index: int) -> Vector3:
+    if sample_points.is_empty():
+        return world_pos
+
+    var idx: int = posmod(track_index,sample_points.size())
+    var center: Vector3 = sample_points[idx]
+    var tangent: Vector3 = sample_tangents[idx]
+    tangent.y = 0.0
+    tangent = tangent.normalized()
+    var right: Vector3 = Vector3(-tangent.z,0.0,tangent.x)
+    var offset: Vector3 = world_pos-center
+    var lateral: float = offset.dot(right)
+    var limit: float = road_width*0.5-1.55
+
+    if abs(lateral) > limit:
+        world_pos -= right*(lateral-clamp(lateral,-limit,limit))
+
+    return world_pos
 
 func _build_checkpoints() -> void:
     checkpoint_indices.clear()
@@ -328,7 +420,7 @@ func spawn_transform_at(sample_index: int = 0, lane_offset: float = 0.0) -> Tran
     if sample_points.is_empty():
         return Transform3D.IDENTITY
     var idx: int = posmod(sample_index,sample_points.size())
-    var p: Vector3 = sample_points[idx] + Vector3.UP * 0.55
+    var p: Vector3 = sample_points[idx] + Vector3.UP * (0.55 + track_height_at(idx))
     var t: Vector3 = sample_tangents[idx]
     var right: Vector3 = Vector3(-t.z,0.0,t.x)
     p += right * lane_offset
@@ -341,7 +433,9 @@ func nearest_track_info(world_pos: Vector3) -> Dictionary:
     var best_i: int = 0
     var best_d: float = INF
     for i in range(sample_points.size()):
-        var d: float = world_pos.distance_squared_to(sample_points[i])
+        var dx: float = world_pos.x-sample_points[i].x
+        var dz: float = world_pos.z-sample_points[i].z
+        var d: float = dx*dx+dz*dz
         if d < best_d:
             best_d = d
             best_i = i
