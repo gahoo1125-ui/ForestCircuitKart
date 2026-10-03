@@ -41,15 +41,15 @@ func _map_point(world_pos: Vector3) -> Vector2:
     return Vector2(pad + nx * usable_w,pad + nz * usable_h)
 
 func _draw() -> void:
-    draw_rect(Rect2(Vector2.ZERO,size),Color(0.015,0.025,0.035,0.82),true)
-    draw_rect(Rect2(Vector2(3,3),size-Vector2(6,6)),Color(0.82,0.68,0.28,0.65),false,2.0)
+    draw_rect(Rect2(Vector2.ZERO,size),Color(0.008,0.026,0.046,0.86),true)
+    draw_rect(Rect2(Vector2(3,3),size-Vector2(6,6)),Color(0.18,0.72,0.94,0.72),false,2.0)
 
     if track_points.size() > 1:
         var line: PackedVector2Array = PackedVector2Array()
         for p in track_points:
             line.append(_map_point(p))
         line.append(_map_point(track_points[0]))
-        draw_polyline(line,Color(0.82,0.84,0.88,0.95),4.0,true)
+        draw_polyline(line,Color(0.62,0.88,0.98,0.92),4.0,true)
         draw_polyline(line,Color(0.18,0.20,0.23,1.0),2.0,true)
 
     for kart in karts:
@@ -57,7 +57,7 @@ func _draw() -> void:
             continue
         var pos: Vector2 = _map_point(kart.global_position)
         if kart == focus_kart:
-            draw_circle(pos,6.0,Color(1.0,0.78,0.12))
+            draw_circle(pos,6.0,Color(0.20,0.86,1.0))
             var forward: Vector3 = -kart.global_transform.basis.z.normalized()
             var dir := Vector2(forward.x,forward.z).normalized()
             draw_line(pos,pos + dir * 11.0,Color.WHITE,2.0,true)

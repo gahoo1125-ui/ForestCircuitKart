@@ -25,7 +25,7 @@ func _draw() -> void:
         for i in range(6):
             ring_points.append(_point(i,ring_radius,center))
         ring_points.append(ring_points[0])
-        draw_polyline(ring_points,Color(0.35,0.38,0.42,0.72),1.0,true)
+        draw_polyline(ring_points,Color(0.17,0.35,0.46,0.70),1.0,true)
 
     for i in range(6):
         draw_line(center,_point(i,radius,center),Color(0.35,0.38,0.42,0.72),1.0,true)
@@ -38,9 +38,9 @@ func _draw() -> void:
         filled.append(_point(i,radius*value,center))
 
     if filled.size() == 6:
-        draw_colored_polygon(filled,Color(1.0,0.65,0.08,0.30))
+        draw_colored_polygon(filled,Color(0.08,0.72,1.0,0.25))
         var outline: PackedVector2Array = filled.duplicate()
         outline.append(filled[0])
-        draw_polyline(outline,Color(1.0,0.76,0.18,1.0),3.0,true)
+        draw_polyline(outline,Color(0.28,0.86,1.0,1.0),3.0,true)
         for p in filled:
-            draw_circle(p,4.0,Color(1.0,0.88,0.36,1.0))
+            draw_circle(p,4.0,Color(0.70,0.96,1.0,1.0))

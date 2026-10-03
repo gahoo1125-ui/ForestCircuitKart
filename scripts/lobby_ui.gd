@@ -24,6 +24,23 @@ var preview_auto_rotate: bool = true
 
 var kart_list: VBoxContainer
 
+func _make_panel_style(bg: Color, border: Color) -> StyleBoxFlat:
+    var s: StyleBoxFlat = StyleBoxFlat.new()
+    s.bg_color = bg
+    s.border_color = border
+    s.set_border_width_all(2)
+    s.corner_radius_top_left = 7
+    s.corner_radius_top_right = 7
+    s.corner_radius_bottom_left = 7
+    s.corner_radius_bottom_right = 7
+    return s
+
+func _style_compact_button(b: Button) -> void:
+    b.add_theme_font_size_override("font_size",15)
+    b.add_theme_stylebox_override("normal",_make_panel_style(Color(0.015,0.050,0.078,0.94),Color(0.12,0.35,0.48,0.72)))
+    b.add_theme_stylebox_override("hover",_make_panel_style(Color(0.025,0.16,0.22,0.98),Color(0.22,0.80,1.0,1.0)))
+    b.add_theme_stylebox_override("pressed",_make_panel_style(Color(0.05,0.35,0.46,1.0),Color(0.45,0.92,1.0,1.0)))
+
 func _ready() -> void:
     layer = 30
     _build_ui()
@@ -44,7 +61,7 @@ func _build_ui() -> void:
 
     var bg: ColorRect = ColorRect.new()
     bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    bg.color = Color(0.012,0.018,0.026,0.97)
+    bg.color = Color(0.008,0.022,0.040,0.985)
     root.add_child(bg)
 
     var outer: MarginContainer = MarginContainer.new()
@@ -60,15 +77,16 @@ func _build_ui() -> void:
     outer.add_child(main_v)
 
     var title: Label = Label.new()
-    title.text = "FOREST CIRCUIT · KART GARAGE"
+    title.text = "FOREST CIRCUIT"
     title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    title.add_theme_font_size_override("font_size",30)
+    title.add_theme_font_size_override("font_size",34)
+    title.modulate = Color(0.96,0.99,1.0)
     main_v.add_child(title)
 
     var sub: Label = Label.new()
-    sub.text = "3D SHOWROOM  ·  SELECT YOUR MACHINE"
+    sub.text = "KART GARAGE  /  SELECT MACHINE"
     sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    sub.modulate = Color(0.82,0.82,0.84)
+    sub.modulate = Color(0.30,0.82,1.0)
     main_v.add_child(sub)
 
     var columns: HBoxContainer = HBoxContainer.new()
@@ -77,7 +95,8 @@ func _build_ui() -> void:
     main_v.add_child(columns)
 
     var left_panel: PanelContainer = PanelContainer.new()
-    left_panel.custom_minimum_size = Vector2(265,0)
+    left_panel.custom_minimum_size = Vector2(270,0)
+    left_panel.add_theme_stylebox_override("panel",_make_panel_style(Color(0.012,0.035,0.060,0.92),Color(0.14,0.53,0.72,0.72)))
     columns.add_child(left_panel)
     var left_margin: MarginContainer = MarginContainer.new()
     for side in ["margin_left","margin_right","margin_top","margin_bottom"]:
@@ -125,6 +144,7 @@ func _build_ui() -> void:
     center_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     center_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
     center_panel.custom_minimum_size = Vector2(560,500)
+    center_panel.add_theme_stylebox_override("panel",_make_panel_style(Color(0.008,0.026,0.048,0.82),Color(0.16,0.68,0.92,0.78)))
     columns.add_child(center_panel)
 
     var center_margin: MarginContainer = MarginContainer.new()
@@ -168,13 +188,13 @@ func _build_ui() -> void:
     center_v.add_child(description_label)
 
     var start_button: Button = Button.new()
-    start_button.text = "게임 시작"
+    start_button.text = "RACE START"
     start_button.custom_minimum_size = Vector2(0,64)
     start_button.add_theme_font_size_override("font_size",24)
     start_button.tooltip_text = "선택한 카트와 모드로 레이스 시작"
     var start_style: StyleBoxFlat = StyleBoxFlat.new()
-    start_style.bg_color = Color(0.92,0.58,0.06,0.96)
-    start_style.border_color = Color(1.0,0.82,0.28,1.0)
+    start_style.bg_color = Color(0.08,0.66,0.92,0.98)
+    start_style.border_color = Color(0.42,0.90,1.0,1.0)
     start_style.set_border_width_all(2)
     start_style.corner_radius_top_left = 10
     start_style.corner_radius_top_right = 10
@@ -186,6 +206,7 @@ func _build_ui() -> void:
 
     var right_panel: PanelContainer = PanelContainer.new()
     right_panel.custom_minimum_size = Vector2(315,0)
+    right_panel.add_theme_stylebox_override("panel",_make_panel_style(Color(0.012,0.035,0.060,0.92),Color(0.14,0.53,0.72,0.72)))
     columns.add_child(right_panel)
     var right_margin: MarginContainer = MarginContainer.new()
     for side in ["margin_left","margin_right","margin_top","margin_bottom"]:
@@ -231,7 +252,7 @@ func _build_preview_world() -> void:
     var env_node: WorldEnvironment = WorldEnvironment.new()
     var env: Environment = Environment.new()
     env.background_mode = Environment.BG_COLOR
-    env.background_color = Color(0.025,0.032,0.045)
+    env.background_color = Color(0.006,0.020,0.038)
     env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
     env.ambient_light_color = Color(0.62,0.67,0.78)
     env.ambient_light_energy = 1.15
@@ -254,7 +275,7 @@ func _build_preview_world() -> void:
     rim.position = Vector3(3.0,2.0,2.8)
     rim.light_energy = 3.0
     rim.omni_range = 9.0
-    rim.light_color = Color(1.0,0.72,0.30)
+    rim.light_color = Color(0.18,0.78,1.0)
     preview_viewport.add_child(rim)
 
     var floor: MeshInstance3D = MeshInstance3D.new()
@@ -265,7 +286,7 @@ func _build_preview_world() -> void:
     floor.mesh = floor_mesh
     floor.position.y = -0.08
     var floor_mat: StandardMaterial3D = StandardMaterial3D.new()
-    floor_mat.albedo_color = Color(0.07,0.075,0.09)
+    floor_mat.albedo_color = Color(0.025,0.070,0.095)
     floor_mat.metallic = 0.75
     floor_mat.roughness = 0.28
     floor.material_override = floor_mat
@@ -289,6 +310,7 @@ func _populate_karts() -> void:
         b.text = str(entry.get("display_name",id))
         b.custom_minimum_size.y = 46
         b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        _style_compact_button(b)
         b.pressed.connect(_select_kart.bind(id))
         kart_list.add_child(b)
 
@@ -296,6 +318,7 @@ func _add_mode_button(parent: VBoxContainer, text_value: String, mode_value: Str
     var b: Button = Button.new()
     b.text = text_value
     b.custom_minimum_size.y = 38
+    _style_compact_button(b)
     b.pressed.connect(_select_mode.bind(mode_value))
     parent.add_child(b)
 
