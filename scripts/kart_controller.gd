@@ -39,6 +39,7 @@ var safe_index_timer: float = 0.0
 var drift_time: float = 0.0
 var drift_direction: float = 0.0
 var drift_slip_angle: float = 0.0
+var corner_slip_angle: float = 0.0
 var drift_chain_timer: float = 0.0
 var collision_recovery_timer: float = 0.0
 var landing_impact_timer: float = 0.0
@@ -58,6 +59,9 @@ const DRIFT_MIN_SPEED: float = 8.5
 const DRIFT_LONG_TIME: float = 0.72
 const DRIFT_MAX_SLIP_DEG: float = 24.0
 const DRIFT_SHORT_SLIP_DEG: float = 11.0
+const CORNER_SLIP_MAX_DEG: float = 7.5
+const CORNER_SLIP_RESPONSE: float = 7.5
+const CORNER_SLIP_RECOVERY: float = 12.0
 
 var gold_boost_root: Node3D
 var speed_fx_root: Node3D
@@ -1321,6 +1325,22 @@ func _physics_process(delta: float) -> void:
     if not drifting:
         drift_slip_angle = lerp(drift_slip_angle,0.0,clamp(delta*DRIFT_RECOVERY_RESPONSE,0.0,1.0))
 
+        # Natural arcade corner slide:
+        # at low speed the kart tracks almost exactly with the nose;
+        # at medium/high speed the movement direction lags slightly behind
+        # the body heading, creating a smooth powerslide-like arc.
+        var corner_speed_factor: float = clamp((speed_ratio-0.28)/0.72,0.0,1.0)
+        var corner_input_factor: float = pow(abs(steer_input),1.15)
+        var target_corner_slip: float = deg_to_rad(CORNER_SLIP_MAX_DEG)*sign(steer_input)*corner_speed_factor*corner_input_factor
+        if boosting:
+            target_corner_slip *= 0.72
+
+        var corner_response: float = CORNER_SLIP_RESPONSE if abs(steer_input) > 0.04 else CORNER_SLIP_RECOVERY
+        corner_slip_angle = lerp(corner_slip_angle,target_corner_slip,clamp(delta*corner_response,0.0,1.0))
+    else:
+        # Dedicated drift remains the larger, skill-based slide.
+        corner_slip_angle = lerp(corner_slip_angle,0.0,clamp(delta*14.0,0.0,1.0))
+
     was_drifting = drifting
 
     speed_ratio = clamp(abs(forward_speed)/max(1.0,base_max_speed),0.0,1.15)
@@ -1355,8 +1375,11 @@ func _physics_process(delta: float) -> void:
 
     var forward: Vector3 = -global_transform.basis.z.normalized()
     var travel_dir: Vector3 = forward
-    if drifting or abs(drift_slip_angle) > 0.005:
-        travel_dir = forward.rotated(Vector3.UP,drift_slip_angle).normalized()
+    var total_slip_angle: float = drift_slip_angle
+    if not drifting:
+        total_slip_angle += corner_slip_angle
+    if drifting or abs(total_slip_angle) > 0.003:
+        travel_dir = forward.rotated(Vector3.UP,total_slip_angle).normalized()
 
     var desired: Vector3 = travel_dir*forward_speed
 
@@ -1524,6 +1547,7 @@ func _physics_process(delta: float) -> void:
         drift_time = 0.0
         drift_direction = 0.0
         drift_slip_angle = 0.0
+        corner_slip_angle = 0.0
         drift_chain_timer = 0.0
         collision_recovery_timer = 0.0
         landing_impact_timer = 0.0
@@ -1568,6 +1592,7 @@ func _recover_from_stuck(current_track_idx: int) -> void:
     drift_time = 0.0
     drift_direction = 0.0
     drift_slip_angle = 0.0
+    corner_slip_angle = 0.0
     drift_chain_timer = 0.0
     collision_recovery_timer = 0.5
     last_motion_position = global_position
