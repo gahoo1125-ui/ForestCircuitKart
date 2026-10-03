@@ -897,98 +897,64 @@ func _add_dragon_wrap_path(parent: Node3D, path: Array[Vector3], mat: StandardMa
         parent.add_child(seg)
 
 func _build_gold_boost() -> void:
-    # Visual-only exhaust package for the endgame kart.
+    # Lightweight visual-only exhaust package. No boost stats are changed.
     gold_boost_root = Node3D.new()
     gold_boost_root.name = "GoldenDragonExhaustVFX"
     gold_boost_root.visible = false
     add_child(gold_boost_root)
 
-    var outer_mat: StandardMaterial3D = StandardMaterial3D.new()
-    outer_mat.albedo_color = Color(1.0,0.42,0.025)
-    outer_mat.emission_enabled = true
-    outer_mat.emission = Color(1.0,0.24,0.005)
-    outer_mat.emission_energy_multiplier = 5.0
-    outer_mat.roughness = 0.08
-
     var gold_mat: StandardMaterial3D = StandardMaterial3D.new()
-    gold_mat.albedo_color = Color(1.0,0.73,0.08)
+    gold_mat.albedo_color = Color(1.0,0.70,0.08)
     gold_mat.emission_enabled = true
-    gold_mat.emission = Color(1.0,0.48,0.015)
-    gold_mat.emission_energy_multiplier = 6.5
-    gold_mat.roughness = 0.05
+    gold_mat.emission = Color(1.0,0.42,0.012)
+    gold_mat.emission_energy_multiplier = 5.2
+    gold_mat.roughness = 0.06
 
     var core_mat: StandardMaterial3D = StandardMaterial3D.new()
-    core_mat.albedo_color = Color(1.0,0.98,0.62)
+    core_mat.albedo_color = Color(1.0,0.96,0.52)
     core_mat.emission_enabled = true
-    core_mat.emission = Color(1.0,0.92,0.38)
-    core_mat.emission_energy_multiplier = 8.0
-    core_mat.roughness = 0.03
+    core_mat.emission = Color(1.0,0.82,0.22)
+    core_mat.emission_energy_multiplier = 6.2
+    core_mat.roughness = 0.04
 
     for x in [-0.52,0.52]:
         var sx: float = float(x)
 
-        # Three nested tapered flames make the exhaust read as an energy burst,
-        # not a single cylinder.
-        var outer: MeshInstance3D = MeshInstance3D.new()
-        var om: CylinderMesh = CylinderMesh.new()
-        om.top_radius = 0.035
-        om.bottom_radius = 0.34
-        om.height = 2.15
-        om.radial_segments = 18
-        outer.mesh = om
-        outer.position = Vector3(sx,0.39,2.12)
-        outer.rotation_degrees.x = 90.0
-        outer.material_override = outer_mat
-        gold_boost_root.add_child(outer)
-
-        var mid: MeshInstance3D = MeshInstance3D.new()
-        var mm: CylinderMesh = CylinderMesh.new()
-        mm.top_radius = 0.025
-        mm.bottom_radius = 0.235
-        mm.height = 1.72
-        mm.radial_segments = 18
-        mid.mesh = mm
-        mid.position = Vector3(sx,0.39,1.92)
-        mid.rotation_degrees.x = 90.0
-        mid.material_override = gold_mat
-        gold_boost_root.add_child(mid)
+        var flame: MeshInstance3D = MeshInstance3D.new()
+        var fm: CylinderMesh = CylinderMesh.new()
+        fm.top_radius = 0.035
+        fm.bottom_radius = 0.30
+        fm.height = 1.70
+        fm.radial_segments = 12
+        flame.mesh = fm
+        flame.position = Vector3(sx,0.39,1.92)
+        flame.rotation_degrees.x = 90.0
+        flame.material_override = gold_mat
+        gold_boost_root.add_child(flame)
 
         var core: MeshInstance3D = MeshInstance3D.new()
         var cm: CylinderMesh = CylinderMesh.new()
-        cm.top_radius = 0.015
-        cm.bottom_radius = 0.12
-        cm.height = 1.25
-        cm.radial_segments = 16
+        cm.top_radius = 0.020
+        cm.bottom_radius = 0.13
+        cm.height = 1.10
+        cm.radial_segments = 10
         core.mesh = cm
-        core.position = Vector3(sx,0.39,1.70)
+        core.position = Vector3(sx,0.39,1.65)
         core.rotation_degrees.x = 90.0
         core.material_override = core_mat
         gold_boost_root.add_child(core)
 
-        # Halo ring around each exhaust mouth.
         var ring: MeshInstance3D = MeshInstance3D.new()
         var rm: TorusMesh = TorusMesh.new()
         rm.inner_radius = 0.16
-        rm.outer_radius = 0.24
-        rm.rings = 20
-        rm.ring_segments = 12
+        rm.outer_radius = 0.23
+        rm.rings = 12
+        rm.ring_segments = 8
         ring.mesh = rm
         ring.position = Vector3(sx,0.39,1.34)
         ring.rotation_degrees.x = 90.0
         ring.material_override = core_mat
         gold_boost_root.add_child(ring)
-
-    # Central shock flare makes the instant of activation feel explosive.
-    var flare: MeshInstance3D = MeshInstance3D.new()
-    var fm: SphereMesh = SphereMesh.new()
-    fm.radius = 0.52
-    fm.height = 0.34
-    fm.radial_segments = 20
-    flare.mesh = fm
-    flare.scale = Vector3(1.55,0.48,0.80)
-    flare.position = Vector3(0.0,0.45,1.48)
-    flare.material_override = gold_mat
-    gold_boost_root.add_child(flare)
 
 func _build_speed_fx() -> void:
     speed_fx_root = Node3D.new()
@@ -1024,7 +990,7 @@ func _build_speed_fx() -> void:
 
 func _build_gold_dragon_flight() -> void:
     gold_dragon_fx_root = Node3D.new()
-    gold_dragon_fx_root.name = "GoldenDragonAwakeningVFX"
+    gold_dragon_fx_root.name = "GoldenDragonBoostVFX"
     gold_dragon_fx_root.visible = false
     add_child(gold_dragon_fx_root)
 
@@ -1036,364 +1002,249 @@ func _build_gold_dragon_flight() -> void:
     gold_trail_history.clear()
 
     var body_mat: StandardMaterial3D = StandardMaterial3D.new()
-    body_mat.albedo_color = Color(1.0,0.63,0.035)
-    body_mat.metallic = 0.78
-    body_mat.roughness = 0.08
+    body_mat.albedo_color = Color(1.0,0.65,0.04)
+    body_mat.metallic = 0.75
+    body_mat.roughness = 0.10
     body_mat.emission_enabled = true
-    body_mat.emission = Color(1.0,0.34,0.006)
-    body_mat.emission_energy_multiplier = 6.2
+    body_mat.emission = Color(1.0,0.34,0.008)
+    body_mat.emission_energy_multiplier = 4.8
 
-    var scale_mat: StandardMaterial3D = StandardMaterial3D.new()
-    scale_mat.albedo_color = Color(1.0,0.84,0.18)
-    scale_mat.metallic = 0.86
-    scale_mat.roughness = 0.055
-    scale_mat.emission_enabled = true
-    scale_mat.emission = Color(1.0,0.56,0.025)
-    scale_mat.emission_energy_multiplier = 7.2
+    var detail_mat: StandardMaterial3D = StandardMaterial3D.new()
+    detail_mat.albedo_color = Color(1.0,0.86,0.22)
+    detail_mat.metallic = 0.82
+    detail_mat.roughness = 0.07
+    detail_mat.emission_enabled = true
+    detail_mat.emission = Color(1.0,0.56,0.03)
+    detail_mat.emission_energy_multiplier = 5.6
 
     var line_mat: StandardMaterial3D = StandardMaterial3D.new()
-    line_mat.albedo_color = Color(1.0,0.97,0.56)
-    line_mat.metallic = 0.48
-    line_mat.roughness = 0.035
+    line_mat.albedo_color = Color(1.0,0.96,0.54)
     line_mat.emission_enabled = true
-    line_mat.emission = Color(1.0,0.82,0.20)
-    line_mat.emission_energy_multiplier = 8.2
+    line_mat.emission = Color(1.0,0.74,0.16)
+    line_mat.emission_energy_multiplier = 6.4
 
-    var eye_mat: StandardMaterial3D = StandardMaterial3D.new()
-    eye_mat.albedo_color = Color(1.0,1.0,0.78)
-    eye_mat.emission_enabled = true
-    eye_mat.emission = Color(1.0,0.96,0.52)
-    eye_mat.emission_energy_multiplier = 10.0
-
-    # 28 overlapping sections form one long serpentine eastern-dragon body.
-    # Tapering at the tail keeps the silhouette elegant instead of chunky.
-    for i in range(28):
-        var t: float = float(i)/27.0
+    # Fewer body sections for performance. The dragon remains clearly readable.
+    for i in range(16):
+        var t: float = float(i)/15.0
 
         var seg: MeshInstance3D = MeshInstance3D.new()
         var mesh: SphereMesh = SphereMesh.new()
-        var r: float = lerp(0.31,0.065,pow(t,0.82))
+        var r: float = lerp(0.32,0.075,pow(t,0.82))
         mesh.radius = r
-        mesh.height = r*1.9
-        mesh.radial_segments = 14
-        mesh.rings = 8
+        mesh.height = r*1.85
+        mesh.radial_segments = 10
+        mesh.rings = 6
         seg.mesh = mesh
-        seg.scale = Vector3(1.05,0.62,1.55)
+        seg.scale = Vector3(1.05,0.62,1.52)
         seg.material_override = body_mat
         gold_dragon_fx_root.add_child(seg)
         gold_dragon_segments.append(seg)
 
-        # A pair of raised scale plates every other body section.
-        if i < 22 and i % 2 == 0:
-            for side in [-1.0,1.0]:
-                var sc: MeshInstance3D = MeshInstance3D.new()
-                var sm: SphereMesh = SphereMesh.new()
-                sm.radius = lerp(0.105,0.045,t)
-                sm.height = lerp(0.060,0.026,t)
-                sm.radial_segments = 10
-                sc.mesh = sm
-                sc.scale = Vector3(1.25,0.22,0.72)
-                sc.material_override = scale_mat
-                gold_dragon_fx_root.add_child(sc)
-                gold_dragon_scale_nodes.append(sc)
-
-        # Flame-like dorsal mane.
-        if i < 20 and i % 2 == 0:
+        if i < 12 and i % 3 == 0:
             var mane: MeshInstance3D = MeshInstance3D.new()
-            var mane_mesh: CylinderMesh = CylinderMesh.new()
-            mane_mesh.top_radius = 0.0
-            mane_mesh.bottom_radius = 0.055 + (1.0-t)*0.035
-            mane_mesh.height = 0.34 + (1.0-t)*0.22
-            mane_mesh.radial_segments = 9
-            mane.mesh = mane_mesh
+            var mm: CylinderMesh = CylinderMesh.new()
+            mm.top_radius = 0.0
+            mm.bottom_radius = 0.055+(1.0-t)*0.025
+            mm.height = 0.34+(1.0-t)*0.18
+            mm.radial_segments = 7
+            mane.mesh = mm
             mane.material_override = line_mat
             gold_dragon_fx_root.add_child(mane)
             gold_dragon_mane.append(mane)
+
+        if i < 12 and i % 3 == 0:
+            for side in [-1.0,1.0]:
+                var sc: MeshInstance3D = MeshInstance3D.new()
+                var sm: SphereMesh = SphereMesh.new()
+                sm.radius = lerp(0.10,0.05,t)
+                sm.height = lerp(0.055,0.028,t)
+                sm.radial_segments = 8
+                sc.mesh = sm
+                sc.scale = Vector3(1.20,0.20,0.70)
+                sc.material_override = detail_mat
+                gold_dragon_fx_root.add_child(sc)
+                gold_dragon_scale_nodes.append(sc)
 
     gold_dragon_head_root = Node3D.new()
     gold_dragon_head_root.name = "GoldenDragonHead"
     gold_dragon_fx_root.add_child(gold_dragon_head_root)
 
-    # Main skull.
     var head: MeshInstance3D = MeshInstance3D.new()
-    var head_mesh: SphereMesh = SphereMesh.new()
-    head_mesh.radius = 0.42
-    head_mesh.height = 0.62
-    head_mesh.radial_segments = 18
-    head.mesh = head_mesh
-    head.scale = Vector3(1.42,0.70,1.55)
+    var hm: SphereMesh = SphereMesh.new()
+    hm.radius = 0.42
+    hm.height = 0.60
+    hm.radial_segments = 14
+    head.mesh = hm
+    head.scale = Vector3(1.40,0.68,1.52)
     head.material_override = body_mat
     gold_dragon_head_root.add_child(head)
 
-    # Long eastern-dragon snout.
     var muzzle: MeshInstance3D = MeshInstance3D.new()
     var muzzle_mesh: SphereMesh = SphereMesh.new()
-    muzzle_mesh.radius = 0.23
-    muzzle_mesh.height = 0.42
-    muzzle_mesh.radial_segments = 14
+    muzzle_mesh.radius = 0.22
+    muzzle_mesh.height = 0.40
+    muzzle_mesh.radial_segments = 10
     muzzle.mesh = muzzle_mesh
-    muzzle.scale = Vector3(1.30,0.54,1.75)
-    muzzle.position = Vector3(0.0,-0.07,-0.46)
-    muzzle.material_override = scale_mat
+    muzzle.scale = Vector3(1.28,0.52,1.68)
+    muzzle.position = Vector3(0.0,-0.06,-0.45)
+    muzzle.material_override = detail_mat
     gold_dragon_head_root.add_child(muzzle)
 
-    # Lower jaw gives the head a roaring silhouette.
     var jaw: MeshInstance3D = MeshInstance3D.new()
     var jaw_mesh: BoxMesh = BoxMesh.new()
-    jaw_mesh.size = Vector3(0.42,0.10,0.48)
+    jaw_mesh.size = Vector3(0.40,0.09,0.44)
     jaw.mesh = jaw_mesh
-    jaw.position = Vector3(0.0,-0.26,-0.45)
-    jaw.rotation_degrees.x = -10.0
+    jaw.position = Vector3(0.0,-0.24,-0.43)
+    jaw.rotation_degrees.x = -9.0
     jaw.material_override = body_mat
     gold_dragon_head_root.add_child(jaw)
 
-    # Brow ridges.
     for side in [-1.0,1.0]:
-        var s: float = float(side)
+        var ss: float = float(side)
 
-        var brow: MeshInstance3D = MeshInstance3D.new()
-        var bm: BoxMesh = BoxMesh.new()
-        bm.size = Vector3(0.25,0.075,0.34)
-        brow.mesh = bm
-        brow.position = Vector3(s*0.20,0.12,-0.33)
-        brow.rotation_degrees = Vector3(0.0,s*-12.0,s*16.0)
-        brow.material_override = scale_mat
-        gold_dragon_head_root.add_child(brow)
+        var horn: MeshInstance3D = MeshInstance3D.new()
+        var horn_mesh: CylinderMesh = CylinderMesh.new()
+        horn_mesh.top_radius = 0.0
+        horn_mesh.bottom_radius = 0.065
+        horn_mesh.height = 0.58
+        horn_mesh.radial_segments = 8
+        horn.mesh = horn_mesh
+        horn.position = Vector3(ss*0.20,0.34,0.02)
+        horn.rotation_degrees = Vector3(-60.0,ss*16.0,ss*40.0)
+        horn.material_override = line_mat
+        gold_dragon_head_root.add_child(horn)
 
-        # Long swept antler horns made from two tapered pieces each.
-        for h in range(2):
-            var horn: MeshInstance3D = MeshInstance3D.new()
-            var hm: CylinderMesh = CylinderMesh.new()
-            hm.top_radius = 0.0
-            hm.bottom_radius = 0.065-float(h)*0.015
-            hm.height = 0.62-float(h)*0.10
-            hm.radial_segments = 10
-            horn.mesh = hm
-            horn.position = Vector3(s*(0.19+float(h)*0.10),0.34+float(h)*0.14,0.02+float(h)*0.13)
-            horn.rotation_degrees = Vector3(-60.0-float(h)*8.0,s*18.0,s*(38.0+float(h)*12.0))
-            horn.material_override = line_mat
-            gold_dragon_head_root.add_child(horn)
+        var whisker: MeshInstance3D = MeshInstance3D.new()
+        var wm: BoxMesh = BoxMesh.new()
+        wm.size = Vector3(0.022,0.022,1.38)
+        whisker.mesh = wm
+        whisker.position = Vector3(ss*0.34,-0.04,-0.62)
+        whisker.rotation_degrees = Vector3(0.0,ss*22.0,ss*-12.0)
+        whisker.material_override = line_mat
+        gold_dragon_head_root.add_child(whisker)
 
-        # Two long whiskers per side.
-        for w in range(2):
-            var whisker: MeshInstance3D = MeshInstance3D.new()
-            var wm: BoxMesh = BoxMesh.new()
-            wm.size = Vector3(0.022,0.022,1.65-float(w)*0.28)
-            whisker.mesh = wm
-            whisker.position = Vector3(s*(0.34+float(w)*0.05),-0.04-float(w)*0.10,-0.70+float(w)*0.10)
-            whisker.rotation_degrees = Vector3(0.0,s*(20.0+float(w)*8.0),s*(-12.0+float(w)*20.0))
-            whisker.material_override = line_mat
-            gold_dragon_head_root.add_child(whisker)
-
-        # Face flame/mane spikes.
-        for j in range(4):
-            var face_mane: MeshInstance3D = MeshInstance3D.new()
-            var fm: CylinderMesh = CylinderMesh.new()
-            fm.top_radius = 0.0
-            fm.bottom_radius = 0.045
-            fm.height = 0.28+float(j)*0.07
-            fm.radial_segments = 8
-            face_mane.mesh = fm
-            face_mane.position = Vector3(s*(0.31+float(j)*0.055),0.10-float(j)*0.07,0.10+float(j)*0.09)
-            face_mane.rotation_degrees = Vector3(72.0,s*22.0,s*(54.0+float(j)*7.0))
-            face_mane.material_override = line_mat
-            gold_dragon_head_root.add_child(face_mane)
-
-        # Eye.
         var eye: MeshInstance3D = MeshInstance3D.new()
-        var eye_mesh: SphereMesh = SphereMesh.new()
-        eye_mesh.radius = 0.060
-        eye_mesh.height = 0.11
-        eye_mesh.radial_segments = 10
-        eye.mesh = eye_mesh
-        eye.position = Vector3(s*0.18,0.08,-0.36)
-        eye.material_override = eye_mat
+        var em: SphereMesh = SphereMesh.new()
+        em.radius = 0.055
+        em.height = 0.10
+        em.radial_segments = 8
+        eye.mesh = em
+        eye.position = Vector3(ss*0.18,0.08,-0.35)
+        eye.material_override = line_mat
         gold_dragon_head_root.add_child(eye)
 
-        # Small fang.
-        var fang: MeshInstance3D = MeshInstance3D.new()
-        var fang_mesh: CylinderMesh = CylinderMesh.new()
-        fang_mesh.top_radius = 0.0
-        fang_mesh.bottom_radius = 0.035
-        fang_mesh.height = 0.20
-        fang.mesh = fang_mesh
-        fang.position = Vector3(s*0.16,-0.24,-0.57)
-        fang.rotation_degrees.x = 175.0
-        fang.material_override = eye_mat
-        gold_dragon_head_root.add_child(fang)
-
-    # Four stylized claws floating beside the front half of the body.
-    for i in range(4):
+    # Only two claws and ten sparks: enough to sell the effect without flooding the scene.
+    for i in range(2):
         var claw: MeshInstance3D = MeshInstance3D.new()
         var cm: CylinderMesh = CylinderMesh.new()
         cm.top_radius = 0.0
         cm.bottom_radius = 0.045
-        cm.height = 0.34
-        cm.radial_segments = 8
+        cm.height = 0.32
+        cm.radial_segments = 7
         claw.mesh = cm
         claw.material_override = line_mat
         gold_dragon_fx_root.add_child(claw)
         gold_dragon_claw_nodes.append(claw)
 
-    # Deterministic sparkle/scale particles using lightweight meshes.
-    for i in range(24):
+    for i in range(10):
         var spark: MeshInstance3D = MeshInstance3D.new()
         var spm: SphereMesh = SphereMesh.new()
-        spm.radius = 0.025 + float(i%3)*0.010
-        spm.height = 0.045 + float(i%3)*0.015
-        spm.radial_segments = 8
+        spm.radius = 0.024+float(i%2)*0.010
+        spm.height = 0.042+float(i%2)*0.014
+        spm.radial_segments = 6
         spark.mesh = spm
-        spark.material_override = line_mat if i%3==0 else scale_mat
+        spark.material_override = line_mat if i%3==0 else detail_mat
         gold_dragon_fx_root.add_child(spark)
         gold_dragon_spark_nodes.append(spark)
 
 func _update_boost_fx(delta: float, boosting: bool) -> void:
     boost_fx_time += delta
 
-    # Keep existing speed-line behavior, but let it linger briefly at the end.
-    if boosting:
-        gold_boost_linger = 0.42
-        gold_boost_activation = min(1.0,gold_boost_activation+delta*4.8)
-        if not gold_boost_was_active:
-            gold_trail_history.clear()
-            gold_trail_sample_timer = 0.0
-            gold_boost_activation = 0.10
-    else:
-        gold_boost_linger = max(0.0,gold_boost_linger-delta)
-        gold_boost_activation = max(0.0,gold_boost_activation-delta*2.6)
-
-    var visual_active: bool = boosting or gold_boost_linger > 0.0
-    gold_boost_was_active = boosting
-
+    # No lingering afterimage. VFX exists only while boost is actually active.
     if speed_fx_root:
-        speed_fx_root.visible = visual_active
-        if visual_active:
-            var fade: float = 1.0 if boosting else clamp(gold_boost_linger/0.42,0.0,1.0)
-            var stretch: float = (1.0+sin(boost_fx_time*22.0)*0.16)*max(0.35,fade)
+        speed_fx_root.visible = boosting
+        if boosting:
+            var stretch: float = 1.0+sin(boost_fx_time*20.0)*0.12
             speed_fx_root.scale = Vector3(1.0,1.0,stretch)
             for i in range(speed_streaks.size()):
                 var streak: MeshInstance3D = speed_streaks[i]
-                streak.position.z = 1.2+fmod(boost_fx_time*(11.0+float(i)*0.55)+float(i)*0.42,4.6)
-                streak.scale.z = (1.0+sin(boost_fx_time*25.0+float(i))*0.28)*max(0.25,fade)
+                streak.visible = i < 6
+                streak.position.z = 1.3+fmod(boost_fx_time*(9.0+float(i)*0.42)+float(i)*0.46,4.0)
+                streak.scale.z = 0.88+sin(boost_fx_time*20.0+float(i))*0.18
         else:
             speed_fx_root.scale = Vector3.ONE
 
     if gold_boost_root:
-        gold_boost_root.visible = visual_active
-        if visual_active:
-            var exhaust_fade: float = 1.0 if boosting else clamp(gold_boost_linger/0.42,0.0,1.0)
-            var exhaust_pulse: float = 1.0+sin(boost_fx_time*26.0)*0.13
-            gold_boost_root.scale = Vector3(
-                max(0.30,exhaust_fade),
-                max(0.30,exhaust_fade),
-                exhaust_pulse*max(0.35,exhaust_fade)
-            )
+        gold_boost_root.visible = boosting
+        if boosting:
+            var pulse: float = 1.0+sin(boost_fx_time*22.0)*0.10
+            gold_boost_root.scale = Vector3(1.0,1.0,pulse)
         else:
             gold_boost_root.scale = Vector3.ONE
 
     if gold_dragon_fx_root:
-        gold_dragon_fx_root.visible = visual_active
-        if visual_active:
-            # Sample the actual world-space path. Converting the stored points
-            # back into current local space makes the dragon/trail bend through corners.
-            if boosting:
-                gold_trail_sample_timer -= delta
-                if gold_trail_sample_timer <= 0.0:
-                    gold_trail_sample_timer = 0.030
-                    gold_trail_history.append(global_position)
-                    while gold_trail_history.size() > 96:
-                        gold_trail_history.pop_front()
-
-            var fade: float = 1.0 if boosting else clamp(gold_boost_linger/0.42,0.0,1.0)
-            var activation: float = gold_boost_activation
-
-            # Head rises above the kart and sweeps slightly side-to-side.
-            var head_z: float = 2.05+sin(boost_fx_time*3.2)*0.12
-            var head_x: float = sin(boost_fx_time*2.9)*0.44
-            var head_y: float = 1.36+sin(boost_fx_time*5.3)*0.12
+        gold_dragon_fx_root.visible = boosting
+        if boosting:
+            # Dragon stays attached to the kart while the boost is active.
+            # It does not leave a world-space trail after the kart passes.
+            var head_z: float = 2.00+sin(boost_fx_time*3.0)*0.10
+            var head_x: float = sin(boost_fx_time*2.8)*0.34
+            var head_y: float = 1.28+sin(boost_fx_time*4.8)*0.10
             gold_dragon_head_root.position = Vector3(head_x,head_y,head_z)
-            gold_dragon_head_root.rotation.y = sin(boost_fx_time*2.6)*0.24
-            gold_dragon_head_root.rotation.z = sin(boost_fx_time*3.8)*0.10
-            gold_dragon_head_root.scale = Vector3.ONE*(0.78+activation*0.32)*max(0.45,fade)
+            gold_dragon_head_root.rotation.y = sin(boost_fx_time*2.4)*0.20
+            gold_dragon_head_root.rotation.z = sin(boost_fx_time*3.5)*0.08
 
-            # Serpentine body follows the real driving path.
             for i in range(gold_dragon_segments.size()):
                 var t: float = float(i+1)/float(gold_dragon_segments.size())
-                var phase: float = boost_fx_time*4.7+t*10.2
+                var phase: float = boost_fx_time*4.2+t*8.8
+                var width: float = 0.26+t*0.68
                 var seg: MeshInstance3D = gold_dragon_segments[i]
+                seg.position = Vector3(
+                    sin(phase)*width,
+                    1.00+cos(phase*0.64)*(0.10+t*0.17),
+                    head_z+0.38+t*6.1
+                )
+                seg.rotation.y = sin(phase*0.52)*0.20
+                seg.rotation.z = sin(phase+0.6)*0.30
+                var pulse: float = 1.0+sin(boost_fx_time*8.0+t*5.0)*0.08
+                seg.scale = Vector3(1.05,0.62,1.52)*pulse*lerp(1.05,0.76,t)
 
-                var base_pos: Vector3
-                var history_offset: int = 3+i*3
-                if gold_trail_history.size() > history_offset:
-                    var hist_idx: int = gold_trail_history.size()-1-history_offset
-                    base_pos = gold_dragon_fx_root.to_local(gold_trail_history[hist_idx])
-                else:
-                    base_pos = Vector3(0.0,0.0,head_z+0.34+t*7.6)
-
-                var wave_width: float = 0.26+t*0.82
-                base_pos.x += sin(phase)*wave_width
-                base_pos.y += 1.03+cos(phase*0.64)*(0.10+t*0.20)
-                base_pos.z += t*0.10
-
-                seg.position = base_pos
-                seg.rotation.y = sin(phase*0.55)*0.24
-                seg.rotation.z = sin(phase+0.7)*0.34
-                var pulse: float = 1.0+sin(boost_fx_time*9.0+t*6.0)*0.10
-                var taper_scale: float = lerp(1.08,0.78,t)
-                seg.scale = Vector3(1.05,0.62,1.55)*pulse*taper_scale*max(0.42,fade)
-
-            # Dorsal flame/mane follows every second segment.
             for i in range(gold_dragon_mane.size()):
-                var body_index: int = min(i*2,gold_dragon_segments.size()-1)
+                var body_index: int = min(i*3,gold_dragon_segments.size()-1)
                 var body_seg: MeshInstance3D = gold_dragon_segments[body_index]
                 var mane: MeshInstance3D = gold_dragon_mane[i]
-                mane.position = body_seg.position+Vector3(0.0,0.23,0.02)
-                mane.rotation_degrees = Vector3(
-                    78.0,
-                    sin(boost_fx_time*3.0+float(i))*10.0,
-                    sin(boost_fx_time*4.6+float(i))*42.0
-                )
-                mane.scale = Vector3.ONE*max(0.35,fade)
+                mane.position = body_seg.position+Vector3(0.0,0.22,0.0)
+                mane.rotation_degrees = Vector3(78.0,0.0,sin(boost_fx_time*4.0+float(i))*34.0)
 
-            # Raised scale plates hug both sides of the body.
             for i in range(gold_dragon_scale_nodes.size()):
                 var pair_index: int = i/2
-                var body_index: int = min(pair_index*2,gold_dragon_segments.size()-1)
+                var body_index: int = min(pair_index*3,gold_dragon_segments.size()-1)
                 var side: float = -1.0 if i%2==0 else 1.0
                 var body_seg: MeshInstance3D = gold_dragon_segments[body_index]
                 var scale_node: MeshInstance3D = gold_dragon_scale_nodes[i]
-                scale_node.position = body_seg.position+Vector3(side*0.20,0.06,0.0)
-                scale_node.rotation_degrees = Vector3(0.0,side*22.0,side*16.0)
-                scale_node.scale = Vector3.ONE*max(0.30,fade)
+                scale_node.position = body_seg.position+Vector3(side*0.19,0.05,0.0)
+                scale_node.rotation_degrees = Vector3(0.0,side*18.0,side*14.0)
 
-            # Floating claws around the front third of the dragon body.
             for i in range(gold_dragon_claw_nodes.size()):
-                var body_index: int = min(4+i*3,gold_dragon_segments.size()-1)
+                var body_index: int = min(3+i*5,gold_dragon_segments.size()-1)
                 var side: float = -1.0 if i%2==0 else 1.0
                 var claw: MeshInstance3D = gold_dragon_claw_nodes[i]
                 var body_seg: MeshInstance3D = gold_dragon_segments[body_index]
-                claw.position = body_seg.position+Vector3(side*(0.34+float(i%2)*0.12),-0.18,0.03)
-                claw.rotation_degrees = Vector3(62.0,side*25.0,side*(35.0+float(i)*7.0))
-                claw.scale = Vector3.ONE*max(0.25,fade)
+                claw.position = body_seg.position+Vector3(side*0.34,-0.16,0.0)
+                claw.rotation_degrees = Vector3(62.0,side*22.0,side*38.0)
 
-            # Gold sparks / loose scales streak backward and outward.
             for i in range(gold_dragon_spark_nodes.size()):
                 var spark: MeshInstance3D = gold_dragon_spark_nodes[i]
-                var lane: float = float(i%8)-3.5
-                var cycle: float = fmod(boost_fx_time*(5.0+float(i%4)*0.8)+float(i)*0.37,7.5)
-                var wobble: float = sin(boost_fx_time*(3.0+float(i%5)*0.35)+float(i))*0.26
+                var lane: float = float(i%5)-2.0
+                var cycle: float = fmod(boost_fx_time*(4.4+float(i%3)*0.55)+float(i)*0.46,5.0)
                 spark.position = Vector3(
-                    lane*0.22+wobble,
-                    0.38+float(i%5)*0.22+abs(sin(boost_fx_time*2.2+float(i)))*0.24,
-                    1.2+cycle
+                    lane*0.24+sin(boost_fx_time*2.8+float(i))*0.16,
+                    0.45+float(i%3)*0.23,
+                    1.4+cycle
                 )
-                var spark_scale: float = (0.55+0.45*sin(boost_fx_time*8.0+float(i)))*max(0.22,fade)
-                spark.scale = Vector3.ONE*max(0.10,spark_scale)
-
-            gold_dragon_fx_root.scale = Vector3.ONE*(0.88+activation*0.12)
+                spark.scale = Vector3.ONE*(0.65+sin(boost_fx_time*7.0+float(i))*0.20)
         else:
             gold_dragon_head_root.rotation = Vector3.ZERO
-            gold_dragon_fx_root.scale = Vector3.ONE
             gold_trail_history.clear()
 
 func _read_controls() -> Dictionary:
