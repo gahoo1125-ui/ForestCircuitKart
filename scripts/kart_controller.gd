@@ -35,13 +35,29 @@ var last_motion_position: Vector3 = Vector3.ZERO
 var safe_track_index: int = 0
 var safe_index_timer: float = 0.0
 
-# Arcade handling tuning: glued-down grip, instant steering and strong bodyfight.
-const ARCADE_GRIP_MULT: float = 1.88
-const ARCADE_DRIFT_GRIP_MULT: float = 0.58
-const STEER_RESPONSE: float = 14.5
-const THROTTLE_RESPONSE: float = 11.0
-const COLLISION_SPEED_KEEP_WALL: float = 0.88
-const COLLISION_SPEED_KEEP_KART: float = 0.97
+# Skill-based arcade handling state.
+var drift_time: float = 0.0
+var drift_direction: float = 0.0
+var drift_slip_angle: float = 0.0
+var drift_chain_timer: float = 0.0
+var collision_recovery_timer: float = 0.0
+var landing_impact_timer: float = 0.0
+var was_airborne_last_frame: bool = false
+
+# Fast, readable arcade handling.
+const ARCADE_GRIP_MULT: float = 1.74
+const ARCADE_DRIFT_GRIP_MULT: float = 0.36
+const STEER_RESPONSE_LOW: float = 13.0
+const STEER_RESPONSE_HIGH: float = 8.6
+const DRIFT_STEER_RESPONSE: float = 12.5
+const DRIFT_RECOVERY_RESPONSE: float = 18.0
+const THROTTLE_RESPONSE: float = 12.5
+const COLLISION_SPEED_KEEP_WALL: float = 0.58
+const COLLISION_SPEED_KEEP_KART: float = 0.84
+const DRIFT_MIN_SPEED: float = 8.5
+const DRIFT_LONG_TIME: float = 0.72
+const DRIFT_MAX_SLIP_DEG: float = 24.0
+const DRIFT_SHORT_SLIP_DEG: float = 11.0
 
 var gold_boost_root: Node3D
 var speed_fx_root: Node3D
@@ -1024,7 +1040,6 @@ func _physics_process(delta: float) -> void:
     if finished or track == null:
         return
 
-    # Never allow accidental pitch/roll. The kart should feel planted and stable.
     rotation.x = 0.0
     rotation.z = 0.0
 
@@ -1058,129 +1073,221 @@ func _physics_process(delta: float) -> void:
         stuck_cooldown = max(0.0,stuck_cooldown-delta)
     if safe_index_timer > 0.0:
         safe_index_timer = max(0.0,safe_index_timer-delta)
+    if drift_chain_timer > 0.0:
+        drift_chain_timer = max(0.0,drift_chain_timer-delta)
+    if collision_recovery_timer > 0.0:
+        collision_recovery_timer = max(0.0,collision_recovery_timer-delta)
+    if landing_impact_timer > 0.0:
+        landing_impact_timer = max(0.0,landing_impact_timer-delta)
 
-    # No free-flight jump physics anymore. Ramps are controlled transitions to upper decks.
-    jump_height = 0.0
-    jump_velocity = 0.0
-    var airborne: bool = false
+    # Lightweight jump / landing support for future ramps.
+    var airborne: bool = jump_height > 0.01 or jump_velocity > 0.01
+    if airborne:
+        jump_velocity -= 24.0*delta
+        jump_height += jump_velocity*delta
+        if jump_height <= 0.0:
+            jump_height = 0.0
+            jump_velocity = 0.0
+            airborne = false
+            landing_impact_timer = 0.18
+    if was_airborne_last_frame and not airborne:
+        landing_impact_timer = max(landing_impact_timer,0.18)
+    was_airborne_last_frame = airborne
 
-    # Fast input response: much less inertia between key press and acceleration.
-    var smooth_t: float = 1.0 - exp(-THROTTLE_RESPONSE * delta)
-    throttle_state = lerp(throttle_state,raw_throttle,smooth_t)
+    var throttle_smooth: float = 1.0-exp(-THROTTLE_RESPONSE*delta)
+    throttle_state = lerp(throttle_state,raw_throttle,throttle_smooth)
 
-    var drifting: bool = drift_pressed and abs(steer_input) > 0.05 and abs(forward_speed) > 8.0
-    var max_speed: float = float(stats.get("max_speed",36.0))
+    var base_max_speed: float = float(stats.get("max_speed",36.0))
+    var max_speed: float = base_max_speed
     var accel: float = float(stats.get("acceleration",19.0))
+    var speed_ratio: float = clamp(abs(forward_speed)/max(1.0,base_max_speed),0.0,1.25)
 
-    if boost_timer > 0.0:
-        boost_timer -= delta
+    var boosting: bool = boost_timer > 0.0
+    if boosting:
+        boost_timer = max(0.0,boost_timer-delta)
         max_speed = float(stats.get("boost_speed",44.0))
-        accel += 10.0
+        accel += 13.0
     elif boost_pressed and n2o_count > 0:
         n2o_count -= 1
         boost_timer = float(stats.get("boost_duration",1.4))
+        boosting = true
+        max_speed = float(stats.get("boost_speed",44.0))
+        accel += 13.0
+
+    if collision_recovery_timer > 0.0:
+        accel += 11.0
+    if landing_impact_timer > 0.0:
+        accel *= 0.86
 
     if gold_boost_root:
-        gold_boost_root.visible = boost_timer > 0.0
+        gold_boost_root.visible = boosting
         if gold_boost_root.visible:
-            var pulse: float = 1.0 + sin(float(Time.get_ticks_msec()) * 0.018) * 0.12
+            var pulse: float = 1.0+sin(float(Time.get_ticks_msec())*0.018)*0.12
             gold_boost_root.scale = Vector3(1.0,1.0,pulse)
 
-    _update_boost_fx(delta,boost_timer > 0.0)
+    _update_boost_fx(delta,boosting)
 
     if throttle_state > 0.03:
-        forward_speed = move_toward(forward_speed,max_speed,accel*1.16*throttle_state*delta)
+        forward_speed = move_toward(forward_speed,max_speed,accel*1.22*throttle_state*delta)
     elif throttle_state < -0.03:
-        forward_speed = move_toward(forward_speed,-max_speed*0.25,30.0*abs(throttle_state)*delta)
+        forward_speed = move_toward(forward_speed,-base_max_speed*0.25,32.0*abs(throttle_state)*delta)
     else:
-        # Stronger coast friction makes release response crisp instead of floaty.
-        forward_speed = move_toward(forward_speed,0.0,7.4*delta)
+        forward_speed = move_toward(forward_speed,0.0,6.2*delta)
+
+    var drifting: bool = drift_pressed and abs(steer_input) > 0.08 and abs(forward_speed) > DRIFT_MIN_SPEED
+
+    if drifting and not was_drifting:
+        drift_time = 0.0
+        drift_direction = sign(steer_input)
+        if drift_direction == 0.0:
+            drift_direction = 1.0
+        if drift_chain_timer > 0.0:
+            drift_charge += 6.0
 
     if drifting:
-        drift_charge += abs(steer_input) * float(stats.get("drift_charge_rate",50.0)) * delta
+        drift_time += delta
+        var drift_growth: float = clamp(drift_time/DRIFT_LONG_TIME,0.0,1.0)
+        var same_direction: float = max(0.0,steer_input*drift_direction)
+        var countersteer: float = max(0.0,-steer_input*drift_direction)
+
+        var desired_slip_deg: float = lerp(DRIFT_SHORT_SLIP_DEG,DRIFT_MAX_SLIP_DEG,drift_growth)
+        desired_slip_deg += same_direction*4.0
+        desired_slip_deg -= countersteer*10.0
+        desired_slip_deg = clamp(desired_slip_deg,5.0,DRIFT_MAX_SLIP_DEG+4.0)
+
+        var desired_slip: float = deg_to_rad(desired_slip_deg)*drift_direction
+        drift_slip_angle = lerp(drift_slip_angle,desired_slip,clamp(delta*(7.8+same_direction*2.0),0.0,1.0))
+
+        var charge_mult: float = lerp(0.72,1.28,drift_growth)
+        if drift_chain_timer > 0.0:
+            charge_mult *= 1.10
+        drift_charge += abs(steer_input)*float(stats.get("drift_charge_rate",50.0))*charge_mult*delta
+
+        var drift_speed_cap: float = lerp(base_max_speed*0.96,base_max_speed*0.86,drift_growth)
+        if abs(forward_speed) > drift_speed_cap:
+            forward_speed = move_toward(forward_speed,drift_speed_cap,4.8*delta)
     elif was_drifting:
+        drift_chain_timer = 0.90
+        if drift_time >= DRIFT_LONG_TIME:
+            forward_speed += min(1.6,base_max_speed*0.04)
+        elif drift_time >= 0.22:
+            forward_speed += min(0.7,base_max_speed*0.02)
+
         while drift_charge >= 100.0 and n2o_count < int(stats.get("max_n2o",2)):
             drift_charge -= 100.0
             n2o_count += 1
+
+        drift_time = 0.0
+        drift_direction = 0.0
+
+    if not drifting:
+        drift_slip_angle = lerp(drift_slip_angle,0.0,clamp(delta*DRIFT_RECOVERY_RESPONSE,0.0,1.0))
+
     was_drifting = drifting
 
-    # Snappy arcade steering: retain steering authority even at high speed.
-    var speed_ratio: float = clamp(abs(forward_speed) / max(1.0,max_speed),0.0,1.0)
-    var steer_softener: float = lerp(1.0,0.88,speed_ratio)
-    var steer_target: float = steer_input * float(stats.get("steer_rate",1.6)) * 1.18 * steer_softener * (1.25 if drifting else 1.0)
+    speed_ratio = clamp(abs(forward_speed)/max(1.0,base_max_speed),0.0,1.15)
+    var high_speed_soften: float = lerp(1.04,0.72,clamp(speed_ratio,0.0,1.0))
+    var steer_mult: float = high_speed_soften
+    if drifting:
+        steer_mult *= 1.34
+    elif boosting:
+        steer_mult *= 0.88
+
+    var steer_target: float = steer_input*float(stats.get("steer_rate",1.6))*1.16*steer_mult
     if airborne:
-        steer_target *= 0.32
-    var steer_smooth: float = 1.0 - exp(-STEER_RESPONSE * delta)
+        steer_target *= 0.42
+
+    var steer_response: float = lerp(STEER_RESPONSE_LOW,STEER_RESPONSE_HIGH,clamp(speed_ratio,0.0,1.0))
+    if drifting:
+        steer_response = DRIFT_STEER_RESPONSE
+    elif abs(drift_slip_angle) > 0.01:
+        steer_response = DRIFT_RECOVERY_RESPONSE
+
+    var steer_smooth: float = 1.0-exp(-steer_response*delta)
     steer_state = lerp(steer_state,steer_target,steer_smooth)
 
-    rotate_y(-steer_state * delta * (1.0 if forward_speed >= 0.0 else -0.72))
+    var yaw_mult: float = 1.0
+    if drifting:
+        var drift_growth_yaw: float = clamp(drift_time/DRIFT_LONG_TIME,0.0,1.0)
+        yaw_mult = lerp(1.18,1.38,drift_growth_yaw)
+    elif boosting:
+        yaw_mult = 0.92
+
+    rotate_y(-steer_state*delta*yaw_mult*(1.0 if forward_speed >= 0.0 else -0.72))
 
     var forward: Vector3 = -global_transform.basis.z.normalized()
-    var desired: Vector3 = forward * forward_speed
+    var travel_dir: Vector3 = forward
+    if drifting or abs(drift_slip_angle) > 0.005:
+        travel_dir = forward.rotated(Vector3.UP,drift_slip_angle).normalized()
 
-    # Very high lateral grip when not drifting. Drift still has controlled slide.
+    var desired: Vector3 = travel_dir*forward_speed
+
     var base_grip: float = float(stats.get("grip",6.0))
-    var grip_value: float = base_grip * (ARCADE_DRIFT_GRIP_MULT if drifting else ARCADE_GRIP_MULT)
+    var grip_value: float = base_grip*(ARCADE_DRIFT_GRIP_MULT if drifting else ARCADE_GRIP_MULT)
+    if boosting and not drifting:
+        grip_value *= 1.08
     if airborne:
-        grip_value *= 0.18
+        grip_value *= 0.22
+    if landing_impact_timer > 0.0:
+        grip_value *= 1.12
+
     velocity = velocity.lerp(desired,clamp(grip_value*delta,0.0,1.0))
     velocity.y = 0.0
 
     var speed_before_collision: float = forward_speed
     move_and_slide()
 
-    # Heavy bodyfight / collision resistance:
-    # slide off obstacles and preserve most of the speed instead of bouncing/stopping.
     if get_slide_collision_count() > 0:
         var keep_ratio: float = 1.0
         var best_normal: Vector3 = Vector3.ZERO
         var wall_hit_during_drift: bool = false
+        var hit_wall: bool = false
 
         for i in range(get_slide_collision_count()):
             var collision: KinematicCollision3D = get_slide_collision(i)
             if collision == null:
                 continue
 
-            var normal: Vector3 = collision.get_normal()
-            normal.y = 0.0
-            if normal.length_squared() < 0.0001:
+            var raw_normal: Vector3 = collision.get_normal()
+            var horizontal_normal: Vector3 = raw_normal
+            horizontal_normal.y = 0.0
+            if horizontal_normal.length_squared() < 0.0001:
                 continue
-            normal = normal.normalized()
+            horizontal_normal = horizontal_normal.normalized()
 
             var collider: Object = collision.get_collider()
             var ratio: float = COLLISION_SPEED_KEEP_WALL
             if collider is KartController:
                 ratio = COLLISION_SPEED_KEEP_KART
-            elif drifting and abs(normal.y) < 0.55:
-                # Hitting a wall while charging a drift cancels that drift's boost gauge.
-                wall_hit_during_drift = true
+            else:
+                hit_wall = true
+                if drifting and abs(raw_normal.y) < 0.55:
+                    wall_hit_during_drift = true
 
             keep_ratio = min(keep_ratio,ratio)
-            if abs(forward.dot(normal)) > abs(forward.dot(best_normal)):
-                best_normal = normal
+            if abs(forward.dot(horizontal_normal)) > abs(forward.dot(best_normal)):
+                best_normal = horizontal_normal
 
         if best_normal != Vector3.ZERO:
-            # Small depenetration nudge keeps the kart from getting wedged into
-            # rail corners, shortcut entrances and other karts.
-            global_position += best_normal * 0.10
-
+            global_position += best_normal*0.12
             var slide_dir: Vector3 = desired.slide(best_normal)
             if slide_dir.length_squared() > 0.001:
                 var slide_normalized: Vector3 = slide_dir.normalized()
-                velocity = slide_normalized * abs(speed_before_collision) * keep_ratio
-
-                # When hitting a wall head-on, gently turn the kart along the wall
-                # rather than letting it keep pushing into the same collider.
-                if abs(forward.dot(best_normal)) > 0.58:
+                velocity = slide_normalized*abs(speed_before_collision)*keep_ratio
+                if abs(forward.dot(best_normal)) > 0.52:
                     var target_yaw: float = atan2(-slide_normalized.x,-slide_normalized.z)
-                    rotation.y = lerp_angle(rotation.y,target_yaw,0.16)
+                    rotation.y = lerp_angle(rotation.y,target_yaw,0.22)
 
-        # Preserve travel direction and most speed through contact.
         if abs(speed_before_collision) > 2.0:
-            forward_speed = sign(speed_before_collision) * max(abs(forward_speed),abs(speed_before_collision)*keep_ratio)
+            forward_speed = sign(speed_before_collision)*max(3.5,abs(speed_before_collision)*keep_ratio)
+
+        if hit_wall:
+            collision_recovery_timer = 0.72
 
         if wall_hit_during_drift:
             drift_charge = 0.0
+            drift_time = 0.0
+            drift_slip_angle *= 0.28
             was_drifting = false
 
     var info: Dictionary = track.nearest_track_info(global_position)
@@ -1188,8 +1295,6 @@ func _physics_process(delta: float) -> void:
     var shortcut: Dictionary = track.shortcut_info(global_position)
     var shortcut_active: bool = bool(shortcut.get("active",false))
 
-    # Remember a recent safe centerline index. This is used only for automatic
-    # rescue when the kart is genuinely wedged and cannot move.
     if not shortcut_active and float(info.get("distance",0.0)) < track.road_width*0.42 and safe_index_timer <= 0.0:
         safe_track_index = track_idx
         safe_index_timer = 0.35
@@ -1201,7 +1306,7 @@ func _physics_process(delta: float) -> void:
             shortcut_entry_valid = track.shortcut_entry_allowed(
                 str(shortcut.get("requirement","")),
                 drifting,
-                boost_timer > 0.0,
+                boosting,
                 abs(forward_speed)
             )
 
@@ -1223,29 +1328,25 @@ func _physics_process(delta: float) -> void:
         track_idx = int(shortcut.get("track_index",track_idx))
         global_position = track.confine_to_shortcut(global_position,shortcut)
     else:
-        # Hard course containment: even at high speed the kart cannot hop over a guardrail.
         global_position = track.confine_to_road(global_position,track_idx)
 
-    # Smoothly follow either the normal road height or the skill shortcut height.
     var target_height: float = track.track_height_at(track_idx)
     if shortcut_active and shortcut_entry_valid:
         target_height = float(shortcut.get("height",target_height))
-    ride_height = move_toward(ride_height,target_height,7.5*delta)
-    global_position.y = 0.55 + ride_height
 
-    # Ground-floor pads give a short automatic acceleration burst.
+    var height_response: float = 6.3 if landing_impact_timer > 0.0 else 8.2
+    ride_height = move_toward(ride_height,target_height,height_response*delta)
+    global_position.y = 0.55+ride_height+jump_height
+
     if not shortcut_active and target_height < 0.25 and track.boost_pad_at(track_idx) and boost_pad_cooldown <= 0.0:
         boost_pad_cooldown = 1.15
         boost_timer = max(boost_timer,0.90)
-        forward_speed = max(forward_speed,float(stats.get("max_speed",36.0))*0.72)
+        forward_speed = max(forward_speed,base_max_speed*0.72)
 
-    var offroad: bool = float(info["distance"]) > track.road_width * 0.58 and not shortcut_active
+    var offroad: bool = float(info["distance"]) > track.road_width*0.58 and not shortcut_active
     if offroad:
         forward_speed = min(forward_speed,20.0)
 
-    # Automatic anti-stuck recovery.
-    # Only triggers when the player/AI is actively trying to drive but the kart
-    # barely changes position for long enough to clearly be wedged.
     var moved_distance: float = global_position.distance_to(last_motion_position)
     var trying_to_move: bool = abs(raw_throttle) > 0.55
     var nearly_stationary: bool = abs(forward_speed) < 3.2 or moved_distance < 0.055
@@ -1264,7 +1365,6 @@ func _physics_process(delta: float) -> void:
         track_idx = int(info["index"])
 
     last_motion_position = global_position
-
     _update_lap(track_idx)
 
     if reset_pressed:
@@ -1283,8 +1383,21 @@ func _physics_process(delta: float) -> void:
         safe_track_index = int(info["index"])
         last_motion_position = global_position
         ride_height = track.track_height_at(int(info["index"]))
+        drift_time = 0.0
+        drift_direction = 0.0
+        drift_slip_angle = 0.0
+        drift_chain_timer = 0.0
+        collision_recovery_timer = 0.0
+        landing_impact_timer = 0.0
 
     hud_update.emit(int(abs(forward_speed)*3.6),lap,n2o_count,clamp(drift_charge,0.0,100.0),offroad)
+
+func launch_kart(impulse: float = 5.8) -> void:
+    if jump_cooldown > 0.0:
+        return
+    jump_velocity = max(jump_velocity,impulse)
+    jump_height = max(jump_height,0.02)
+    jump_cooldown = 0.32
 
 func _recover_from_stuck(current_track_idx: int) -> void:
     if track == null or track.sample_points.is_empty():
@@ -1314,6 +1427,11 @@ func _recover_from_stuck(current_track_idx: int) -> void:
     shortcut_entry_valid = false
     shortcut_fail_cooldown = 0.6
     boost_pad_cooldown = 0.45
+    drift_time = 0.0
+    drift_direction = 0.0
+    drift_slip_angle = 0.0
+    drift_chain_timer = 0.0
+    collision_recovery_timer = 0.5
     last_motion_position = global_position
 
 func _update_lap(idx: int) -> void:
