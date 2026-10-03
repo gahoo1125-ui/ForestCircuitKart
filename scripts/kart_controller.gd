@@ -28,10 +28,10 @@ var boost_pad_cooldown: float = 0.0
 var ride_height: float = 0.0
 
 # Arcade handling tuning: glued-down grip, instant steering and strong bodyfight.
-const ARCADE_GRIP_MULT: float = 2.45
-const ARCADE_DRIFT_GRIP_MULT: float = 0.62
-const STEER_RESPONSE: float = 18.0
-const THROTTLE_RESPONSE: float = 13.5
+const ARCADE_GRIP_MULT: float = 1.88
+const ARCADE_DRIFT_GRIP_MULT: float = 0.58
+const STEER_RESPONSE: float = 14.5
+const THROTTLE_RESPONSE: float = 11.0
 const COLLISION_SPEED_KEEP_WALL: float = 0.88
 const COLLISION_SPEED_KEEP_KART: float = 0.97
 
@@ -938,7 +938,7 @@ func _physics_process(delta: float) -> void:
         forward_speed = move_toward(forward_speed,-max_speed*0.25,30.0*abs(throttle_state)*delta)
     else:
         # Stronger coast friction makes release response crisp instead of floaty.
-        forward_speed = move_toward(forward_speed,0.0,9.5*delta)
+        forward_speed = move_toward(forward_speed,0.0,7.4*delta)
 
     if drifting:
         drift_charge += abs(steer_input) * float(stats.get("drift_charge_rate",50.0)) * delta
@@ -978,6 +978,7 @@ func _physics_process(delta: float) -> void:
     if get_slide_collision_count() > 0:
         var keep_ratio: float = 1.0
         var best_normal: Vector3 = Vector3.ZERO
+        var wall_hit_during_drift: bool = false
 
         for i in range(get_slide_collision_count()):
             var collision: KinematicCollision3D = get_slide_collision(i)
@@ -994,6 +995,9 @@ func _physics_process(delta: float) -> void:
             var ratio: float = COLLISION_SPEED_KEEP_WALL
             if collider is KartController:
                 ratio = COLLISION_SPEED_KEEP_KART
+            elif drifting and abs(normal.y) < 0.55:
+                # Hitting a wall while charging a drift cancels that drift's boost gauge.
+                wall_hit_during_drift = true
 
             keep_ratio = min(keep_ratio,ratio)
             if abs(forward.dot(normal)) > abs(forward.dot(best_normal)):
@@ -1007,6 +1011,10 @@ func _physics_process(delta: float) -> void:
         # Preserve travel direction and most speed through contact.
         if abs(speed_before_collision) > 2.0:
             forward_speed = sign(speed_before_collision) * max(abs(forward_speed),abs(speed_before_collision)*keep_ratio)
+
+        if wall_hit_during_drift:
+            drift_charge = 0.0
+            was_drifting = false
 
     var info: Dictionary = track.nearest_track_info(global_position)
     var track_idx: int = int(info["index"])

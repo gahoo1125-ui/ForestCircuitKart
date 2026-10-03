@@ -15,6 +15,7 @@ func setup() -> void:
     _build_scenery()
     _build_stunt_elements()
     _build_natural_landmarks()
+    _build_arcade_race_environment()
     _build_checkpoints()
 
 func _sample_track() -> void:
@@ -512,6 +513,255 @@ func _build_natural_landmarks() -> void:
                 flower.position = p + r*float(side)*(road_width*0.5+2.2+float(j)*0.45) + t*(float(j)-1.0)*0.7 + Vector3.UP*0.14
                 flower.material_override = flower_mat
                 add_child(flower)
+
+func _build_arcade_race_environment() -> void:
+    if sample_points.is_empty():
+        return
+
+    var n: int = sample_points.size()
+
+    var cyan: StandardMaterial3D = _mat(Color(0.04,0.70,0.96),0.32,0.22)
+    cyan.emission_enabled = true
+    cyan.emission = Color(0.02,0.34,0.62)
+    cyan.emission_energy_multiplier = 2.0
+
+    var yellow: StandardMaterial3D = _mat(Color(1.0,0.72,0.08),0.24,0.28)
+    yellow.emission_enabled = true
+    yellow.emission = Color(0.55,0.24,0.01)
+    yellow.emission_energy_multiplier = 1.6
+
+    var pink: StandardMaterial3D = _mat(Color(0.96,0.20,0.46),0.18,0.30)
+    var white: StandardMaterial3D = _mat(Color(0.94,0.98,1.0),0.08,0.36)
+    var navy: StandardMaterial3D = _mat(Color(0.045,0.085,0.14),0.28,0.30)
+    var seat_mat: StandardMaterial3D = _mat(Color(0.10,0.18,0.28),0.05,0.58)
+    var building_mats: Array[StandardMaterial3D] = [
+        _mat(Color(0.18,0.62,0.92),0.02,0.66),
+        _mat(Color(0.96,0.48,0.18),0.02,0.66),
+        _mat(Color(0.36,0.76,0.34),0.02,0.66),
+        _mat(Color(0.72,0.40,0.90),0.02,0.66)
+    ]
+
+    # --- Start / finish festival zone.
+    var start_idx: int = 0
+    var p: Vector3 = sample_points[start_idx]
+    var t: Vector3 = sample_tangents[start_idx].normalized()
+    var r: Vector3 = Vector3(-t.z,0.0,t.x).normalized()
+
+    # Checkered start line.
+    for lane in range(12):
+        var tile: MeshInstance3D = MeshInstance3D.new()
+        var tile_mesh: BoxMesh = BoxMesh.new()
+        tile_mesh.size = Vector3(road_width/12.0,0.045,0.72)
+        tile.mesh = tile_mesh
+        tile.position = p + r*(-road_width*0.5 + (float(lane)+0.5)*(road_width/12.0)) + Vector3.UP*0.08
+        tile.basis = Basis.looking_at(t,Vector3.UP)
+        tile.material_override = white if lane%2==0 else navy
+        add_child(tile)
+
+    # Start gate pillars and overhead beam.
+    for side in [-1.0,1.0]:
+        var pillar: MeshInstance3D = MeshInstance3D.new()
+        var pillar_mesh: BoxMesh = BoxMesh.new()
+        pillar_mesh.size = Vector3(1.4,7.2,1.4)
+        pillar.mesh = pillar_mesh
+        pillar.position = p + r*float(side)*(road_width*0.5+2.0) + Vector3.UP*3.6
+        pillar.material_override = cyan if side < 0.0 else yellow
+        add_child(pillar)
+
+        # Decorative flag/banner beside the gate.
+        var flag: MeshInstance3D = MeshInstance3D.new()
+        var flag_mesh: BoxMesh = BoxMesh.new()
+        flag_mesh.size = Vector3(2.6,3.8,0.16)
+        flag.mesh = flag_mesh
+        flag.position = p + r*float(side)*(road_width*0.5+4.1) - t*1.5 + Vector3.UP*3.1
+        flag.basis = Basis.looking_at(t,Vector3.UP)
+        flag.material_override = pink if side < 0.0 else cyan
+        add_child(flag)
+
+    var beam: MeshInstance3D = MeshInstance3D.new()
+    var beam_mesh: BoxMesh = BoxMesh.new()
+    beam_mesh.size = Vector3(road_width+5.5,1.3,1.25)
+    beam.mesh = beam_mesh
+    beam.position = p + Vector3.UP*6.5
+    beam.basis = Basis.looking_at(t,Vector3.UP)
+    beam.material_override = navy
+    add_child(beam)
+
+    var start_sign: Label3D = Label3D.new()
+    start_sign.text = "FOREST CIRCUIT  •  START"
+    start_sign.font_size = 52
+    start_sign.outline_size = 8
+    start_sign.modulate = Color(0.95,0.99,1.0)
+    start_sign.position = p - t*0.68 + Vector3.UP*6.52
+    start_sign.basis = Basis.looking_at(t,Vector3.UP)
+    add_child(start_sign)
+
+    # World-space countdown lights on the start gate.
+    for li in range(3):
+        var light: MeshInstance3D = MeshInstance3D.new()
+        var light_mesh: SphereMesh = SphereMesh.new()
+        light_mesh.radius = 0.34
+        light_mesh.height = 0.55
+        light.mesh = light_mesh
+        light.position = p + r*(float(li)-1.0)*1.05 - t*0.78 + Vector3.UP*5.55
+        var lm: StandardMaterial3D = StandardMaterial3D.new()
+        if li == 0:
+            lm.albedo_color = Color(1.0,0.08,0.06)
+            lm.emission = Color(1.0,0.03,0.02)
+        elif li == 1:
+            lm.albedo_color = Color(1.0,0.76,0.05)
+            lm.emission = Color(1.0,0.42,0.01)
+        else:
+            lm.albedo_color = Color(0.08,1.0,0.28)
+            lm.emission = Color(0.02,0.75,0.14)
+        lm.emission_enabled = true
+        lm.emission_energy_multiplier = 3.0
+        light.material_override = lm
+        add_child(light)
+
+    # Staggered starting grid boxes for several karts.
+    for row in range(4):
+        var grid_idx: int = posmod(-6-row*4,n)
+        var gp: Vector3 = sample_points[grid_idx]
+        var gt: Vector3 = sample_tangents[grid_idx].normalized()
+        var gr: Vector3 = Vector3(-gt.z,0.0,gt.x).normalized()
+        for lane in [-1.0,1.0]:
+            var box: MeshInstance3D = MeshInstance3D.new()
+            var box_mesh: BoxMesh = BoxMesh.new()
+            box_mesh.size = Vector3(3.7,0.025,5.0)
+            box.mesh = box_mesh
+            box.position = gp + gr*lane*4.1 + Vector3.UP*0.075
+            box.basis = Basis.looking_at(gt,Vector3.UP)
+            box.material_override = _mat(Color(0.94,0.96,1.0,1.0),0.0,0.50)
+            add_child(box)
+
+    # Grandstands on both sides of the starting straight.
+    for side in [-1.0,1.0]:
+        for section in range(3):
+            var base_pos: Vector3 = p + r*float(side)*(road_width*0.5+9.5) + t*(float(section)-1.0)*10.0
+            for tier in range(4):
+                var stand: MeshInstance3D = MeshInstance3D.new()
+                var stand_mesh: BoxMesh = BoxMesh.new()
+                stand_mesh.size = Vector3(6.5,0.85,7.0)
+                stand.mesh = stand_mesh
+                stand.position = base_pos + r*float(side)*float(tier)*0.75 + Vector3.UP*(0.45+float(tier)*0.75)
+                stand.basis = Basis.looking_at(t,Vector3.UP)
+                stand.material_override = seat_mat if tier%2==0 else navy
+                add_child(stand)
+
+    # --- Arcade buildings, street lamps, billboards and flags around the whole course.
+    for i in range(0,n,24):
+        var bp: Vector3 = sample_points[i]
+        var bt: Vector3 = sample_tangents[i].normalized()
+        var br: Vector3 = Vector3(-bt.z,0.0,bt.x).normalized()
+
+        for side in [-1.0,1.0]:
+            var s: float = float(side)
+            var outer: Vector3 = bp + br*s*(road_width*0.5+22.0+float((i/24)%3)*4.5)
+
+            var building: MeshInstance3D = MeshInstance3D.new()
+            var bm: BoxMesh = BoxMesh.new()
+            var bh: float = 7.0 + float((i/24)%4)*2.2
+            bm.size = Vector3(7.0, bh, 7.0)
+            building.mesh = bm
+            building.position = outer + Vector3.UP*(bh*0.5)
+            building.rotation.y = atan2(bt.x,bt.z) + s*0.12
+            building.material_override = building_mats[(i/24 + (0 if side < 0.0 else 1)) % building_mats.size()]
+            add_child(building)
+
+            var roof: MeshInstance3D = MeshInstance3D.new()
+            var roof_mesh: CylinderMesh = CylinderMesh.new()
+            roof_mesh.top_radius = 0.0
+            roof_mesh.bottom_radius = 5.2
+            roof_mesh.height = 3.0
+            roof.mesh = roof_mesh
+            roof.position = outer + Vector3.UP*(bh+1.5)
+            roof.material_override = yellow if i%48==0 else pink
+            add_child(roof)
+
+            # Oversized arcade billboard.
+            var billboard: MeshInstance3D = MeshInstance3D.new()
+            var bb_mesh: BoxMesh = BoxMesh.new()
+            bb_mesh.size = Vector3(5.8,3.0,0.22)
+            billboard.mesh = bb_mesh
+            billboard.position = bp + br*s*(road_width*0.5+5.1) + Vector3.UP*3.3
+            billboard.basis = Basis.looking_at(bt,Vector3.UP)
+            billboard.material_override = cyan if i%48==0 else yellow
+            add_child(billboard)
+
+        # Cartoonish streetlight.
+        if i % 48 == 0:
+            for side in [-1.0,1.0]:
+                var pole: MeshInstance3D = MeshInstance3D.new()
+                var pole_mesh: CylinderMesh = CylinderMesh.new()
+                pole_mesh.top_radius = 0.10
+                pole_mesh.bottom_radius = 0.16
+                pole_mesh.height = 5.4
+                pole.mesh = pole_mesh
+                pole.position = bp + br*float(side)*(road_width*0.5+3.0) + Vector3.UP*2.7
+                pole.material_override = navy
+                add_child(pole)
+
+                var lamp: MeshInstance3D = MeshInstance3D.new()
+                var lamp_mesh: SphereMesh = SphereMesh.new()
+                lamp_mesh.radius = 0.35
+                lamp_mesh.height = 0.5
+                lamp.mesh = lamp_mesh
+                lamp.position = bp + br*float(side)*(road_width*0.5+3.0) + Vector3.UP*5.55
+                lamp.material_override = yellow
+                add_child(lamp)
+
+    # --- Bright tunnel section.
+    var tunnel_center: int = int(n*0.47)
+    for step in range(-6,7,2):
+        var idx: int = posmod(tunnel_center+step,n)
+        var tp: Vector3 = sample_points[idx] + Vector3.UP*track_height_at(idx)
+        var tt: Vector3 = sample_tangents[idx].normalized()
+        var tr: Vector3 = Vector3(-tt.z,0.0,tt.x).normalized()
+
+        for side in [-1.0,1.0]:
+            var wall: MeshInstance3D = MeshInstance3D.new()
+            var wall_mesh: BoxMesh = BoxMesh.new()
+            wall_mesh.size = Vector3(1.1,6.0,4.8)
+            wall.mesh = wall_mesh
+            wall.position = tp + tr*float(side)*(road_width*0.5+0.7) + Vector3.UP*3.0
+            wall.basis = Basis.looking_at(tt,Vector3.UP)
+            wall.material_override = navy
+            add_child(wall)
+
+        var roof: MeshInstance3D = MeshInstance3D.new()
+        var roof_mesh: BoxMesh = BoxMesh.new()
+        roof_mesh.size = Vector3(road_width+2.2,0.8,4.8)
+        roof.mesh = roof_mesh
+        roof.position = tp + Vector3.UP*6.0
+        roof.basis = Basis.looking_at(tt,Vector3.UP)
+        roof.material_override = cyan if step%4==0 else pink
+        add_child(roof)
+
+    # --- Oversized directional arches on technical corners/S-sections.
+    for frac in [0.11,0.34,0.57,0.79,0.91]:
+        var idx: int = int(float(n)*float(frac))
+        var ap: Vector3 = sample_points[idx] + Vector3.UP*track_height_at(idx)
+        var at: Vector3 = sample_tangents[idx].normalized()
+        var ar: Vector3 = Vector3(-at.z,0.0,at.x).normalized()
+
+        for side in [-1.0,1.0]:
+            var post: MeshInstance3D = MeshInstance3D.new()
+            var post_mesh: BoxMesh = BoxMesh.new()
+            post_mesh.size = Vector3(0.65,4.6,0.65)
+            post.mesh = post_mesh
+            post.position = ap + ar*float(side)*(road_width*0.5+1.1) + Vector3.UP*2.3
+            post.material_override = yellow
+            add_child(post)
+
+        var arch: MeshInstance3D = MeshInstance3D.new()
+        var arch_mesh: BoxMesh = BoxMesh.new()
+        arch_mesh.size = Vector3(road_width+2.5,0.65,0.65)
+        arch.mesh = arch_mesh
+        arch.position = ap + Vector3.UP*4.45
+        arch.basis = Basis.looking_at(at,Vector3.UP)
+        arch.material_override = pink if idx%2==0 else cyan
+        add_child(arch)
 
 func track_height_at(track_index: int) -> float:
     if sample_points.is_empty():
