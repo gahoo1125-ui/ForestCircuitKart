@@ -8,6 +8,8 @@ var player: KartController
 var player2: KartController
 var hud: RaceHUD
 var menu_layer: CanvasLayer
+var lobby_ui: LobbyUI
+var last_race_reward: Dictionary = {}
 var result_label: Label
 var selected_label: Label
 var mode_label: Label
@@ -193,6 +195,7 @@ func _build_world() -> void:
 
 func _build_menu() -> void:
     var lobby: LobbyUI = LOBBY_SCENE.instantiate() as LobbyUI
+    lobby_ui = lobby
     menu_layer = lobby
     add_child(menu_layer)
     lobby.configure(kart_data,kart_order,_get_lan_ip(),LAN_PORT)
@@ -255,6 +258,9 @@ func _spawn_kart(id: String, mode: String, spawn_index: int, lane_offset: float)
     var kart: KartController = KartController.new()
     add_child(kart)
     kart.setup(id,track,mode,spawn_index,lane_offset)
+    if lobby_ui and mode == "player1":
+        kart.apply_upgrade_level(lobby_ui.get_upgrade_level(id))
+        kart.apply_equipment(lobby_ui.get_equipped_equipment())
     kart.set_race_locked(true)
     race_karts.append(kart)
     kart.race_finished.connect(_on_kart_finished.bind(kart))
@@ -707,6 +713,17 @@ func _finalize_race_after_countdown() -> void:
         if kart and is_instance_valid(kart):
             kart.set_physics_process(false)
 
+    var player_place: int = 0
+    var completed: bool = false
+    if player and is_instance_valid(player):
+        var pos: int = finished_order.find(player)
+        if pos >= 0:
+            player_place = pos + 1
+            completed = true
+
+    if lobby_ui:
+        last_race_reward = lobby_ui.award_race_result(player_place,completed)
+
     var first_time: float = 0.0
     if not finished_order.is_empty():
         first_time = float(finished_times.get(finished_order[0].get_instance_id(),0.0))
@@ -769,6 +786,38 @@ func _show_podium(total_time: float) -> void:
         var first_time: float = float(ranked[0].get("time",0.0)) if not ranked.is_empty() else 0.0
         var card: PanelContainer = _make_podium_card(rank_number,entry,is_player,first_time)
         podium_row.add_child(card)
+
+    if not last_race_reward.is_empty():
+        var reward_panel: PanelContainer = PanelContainer.new()
+        reward_panel.custom_minimum_size = Vector2(480,72)
+        var reward_style: StyleBoxFlat = StyleBoxFlat.new()
+        reward_style.bg_color = Color(0.10,0.075,0.018,0.94)
+        reward_style.border_color = Color(1.0,0.72,0.12,1.0)
+        reward_style.set_border_width_all(2)
+        reward_style.corner_radius_top_left = 10
+        reward_style.corner_radius_top_right = 10
+        reward_style.corner_radius_bottom_left = 10
+        reward_style.corner_radius_bottom_right = 10
+        reward_panel.add_theme_stylebox_override("panel",reward_style)
+        reward_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+        main_v.add_child(reward_panel)
+
+        var reward_label: Label = Label.new()
+        var bonus: int = int(last_race_reward.get("streak_bonus",0))
+        reward_label.text = "이번 경기  +%d GOLD   (+%d XP)%s" % [
+            int(last_race_reward.get("gold",0)),
+            int(last_race_reward.get("xp",0)),
+            ("   연승 보너스 +%d" % bonus if bonus > 0 else "")
+        ]
+        reward_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        reward_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+        reward_label.add_theme_font_size_override("font_size",21)
+        reward_label.modulate = Color(1.0,0.84,0.28)
+        reward_panel.add_child(reward_label)
+        var reward_tween: Tween = create_tween()
+        reward_panel.scale = Vector2(0.92,0.92)
+        reward_panel.pivot_offset = Vector2(240,36)
+        reward_tween.tween_property(reward_panel,"scale",Vector2.ONE,0.32).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
     var note: Label = Label.new()
     note.text = "1위 · 2위 · 3위까지 시상"
@@ -925,7 +974,10 @@ func _return_to_lobby() -> void:
     race_result_open = false
     _clear_race(true)
     menu_layer.visible = true
-    if result_label and result_label.text.is_empty():
+    if lobby_ui:
+        lobby_ui.refresh_hub()
+        lobby_ui.show_last_reward(last_race_reward)
+    elif result_label and result_label.text.is_empty():
         result_label.text = "로비로 돌아왔습니다."
 
 func _clear_race(disconnect_network: bool) -> void:

@@ -80,6 +80,29 @@ func apply_start_boost(power: float = 1.0) -> void:
     boost_timer = max(boost_timer,1.05 + 0.35 * p)
 
 
+func apply_upgrade_level(level: int) -> void:
+    var lv: int = clamp(level,0,10)
+    stats["max_speed"] = float(stats.get("max_speed",36.0)) + lv*0.35
+    stats["acceleration"] = float(stats.get("acceleration",19.0)) + lv*0.35
+    stats["drift_charge_rate"] = float(stats.get("drift_charge_rate",50.0)) + lv*1.2
+    stats["boost_speed"] = float(stats.get("boost_speed",44.0)) + lv*0.45
+    stats["boost_duration"] = float(stats.get("boost_duration",1.4)) + lv*0.015
+    stats["steer_rate"] = float(stats.get("steer_rate",1.6)) + lv*0.015
+
+func apply_equipment(equipment_id: String) -> void:
+    match equipment_id:
+        "comfort_tire":
+            stats["steer_rate"] = float(stats.get("steer_rate",1.6)) + 0.03
+        "turbo_chip":
+            stats["boost_speed"] = float(stats.get("boost_speed",44.0)) + 1.5
+        "drift_ring":
+            stats["drift_charge_rate"] = float(stats.get("drift_charge_rate",50.0)) + 4.0
+        "engine_core":
+            stats["acceleration"] = float(stats.get("acceleration",19.0)) + 1.5
+        "gold_wing":
+            stats["max_speed"] = float(stats.get("max_speed",36.0)) + 1.0
+            stats["boost_speed"] = float(stats.get("boost_speed",44.0)) + 1.0
+
 func setup_preview(id: String) -> void:
     kart_id = id
     track = null
