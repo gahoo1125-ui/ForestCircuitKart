@@ -29,6 +29,11 @@ var ride_height: float = 0.0
 var active_shortcut_id: String = ""
 var shortcut_entry_valid: bool = false
 var shortcut_fail_cooldown: float = 0.0
+var stuck_timer: float = 0.0
+var stuck_cooldown: float = 0.0
+var last_motion_position: Vector3 = Vector3.ZERO
+var safe_track_index: int = 0
+var safe_index_timer: float = 0.0
 
 # Arcade handling tuning: glued-down grip, instant steering and strong bodyfight.
 const ARCADE_GRIP_MULT: float = 1.88
@@ -63,6 +68,8 @@ func setup(id: String, track_ref: TrackBuilder, mode: String = "player1", spawn_
     _build_kart()
     global_transform = track.spawn_transform_at(spawn_index,lane_offset)
     ride_height = track.track_height_at(posmod(spawn_index,track.sample_points.size()))
+    safe_track_index = posmod(spawn_index,track.sample_points.size())
+    last_motion_position = global_position
     remote_position = global_position
     remote_yaw = rotation.y
     started_at = Time.get_ticks_msec()
@@ -930,6 +937,10 @@ func _physics_process(delta: float) -> void:
         boost_pad_cooldown = max(0.0,boost_pad_cooldown-delta)
     if shortcut_fail_cooldown > 0.0:
         shortcut_fail_cooldown = max(0.0,shortcut_fail_cooldown-delta)
+    if stuck_cooldown > 0.0:
+        stuck_cooldown = max(0.0,stuck_cooldown-delta)
+    if safe_index_timer > 0.0:
+        safe_index_timer = max(0.0,safe_index_timer-delta)
 
     # No free-flight jump physics anymore. Ramps are controlled transitions to upper decks.
     jump_height = 0.0
@@ -1032,9 +1043,20 @@ func _physics_process(delta: float) -> void:
                 best_normal = normal
 
         if best_normal != Vector3.ZERO:
+            # Small depenetration nudge keeps the kart from getting wedged into
+            # rail corners, shortcut entrances and other karts.
+            global_position += best_normal * 0.10
+
             var slide_dir: Vector3 = desired.slide(best_normal)
             if slide_dir.length_squared() > 0.001:
-                velocity = slide_dir.normalized() * abs(speed_before_collision) * keep_ratio
+                var slide_normalized: Vector3 = slide_dir.normalized()
+                velocity = slide_normalized * abs(speed_before_collision) * keep_ratio
+
+                # When hitting a wall head-on, gently turn the kart along the wall
+                # rather than letting it keep pushing into the same collider.
+                if abs(forward.dot(best_normal)) > 0.58:
+                    var target_yaw: float = atan2(-slide_normalized.x,-slide_normalized.z)
+                    rotation.y = lerp_angle(rotation.y,target_yaw,0.16)
 
         # Preserve travel direction and most speed through contact.
         if abs(speed_before_collision) > 2.0:
@@ -1048,6 +1070,12 @@ func _physics_process(delta: float) -> void:
     var track_idx: int = int(info["index"])
     var shortcut: Dictionary = track.shortcut_info(global_position)
     var shortcut_active: bool = bool(shortcut.get("active",false))
+
+    # Remember a recent safe centerline index. This is used only for automatic
+    # rescue when the kart is genuinely wedged and cannot move.
+    if not shortcut_active and float(info.get("distance",0.0)) < track.road_width*0.42 and safe_index_timer <= 0.0:
+        safe_track_index = track_idx
+        safe_index_timer = 0.35
 
     if shortcut_active:
         var sid: String = str(shortcut.get("id",""))
@@ -1098,6 +1126,28 @@ func _physics_process(delta: float) -> void:
     if offroad:
         forward_speed = min(forward_speed,20.0)
 
+    # Automatic anti-stuck recovery.
+    # Only triggers when the player/AI is actively trying to drive but the kart
+    # barely changes position for long enough to clearly be wedged.
+    var moved_distance: float = global_position.distance_to(last_motion_position)
+    var trying_to_move: bool = abs(raw_throttle) > 0.55
+    var nearly_stationary: bool = abs(forward_speed) < 3.2 or moved_distance < 0.055
+    var touching_geometry: bool = get_slide_collision_count() > 0 or offroad
+
+    if trying_to_move and nearly_stationary and touching_geometry and stuck_cooldown <= 0.0:
+        stuck_timer += delta
+    else:
+        stuck_timer = max(0.0,stuck_timer-delta*2.4)
+
+    if stuck_timer >= 1.15:
+        _recover_from_stuck(track_idx)
+        stuck_timer = 0.0
+        stuck_cooldown = 1.5
+        info = track.nearest_track_info(global_position)
+        track_idx = int(info["index"])
+
+    last_motion_position = global_position
+
     _update_lap(track_idx)
 
     if reset_pressed:
@@ -1111,9 +1161,43 @@ func _physics_process(delta: float) -> void:
         active_shortcut_id = ""
         shortcut_entry_valid = false
         shortcut_fail_cooldown = 0.5
+        stuck_timer = 0.0
+        stuck_cooldown = 0.8
+        safe_track_index = int(info["index"])
+        last_motion_position = global_position
         ride_height = track.track_height_at(int(info["index"]))
 
     hud_update.emit(int(abs(forward_speed)*3.6),lap,n2o_count,clamp(drift_charge,0.0,100.0),offroad)
+
+func _recover_from_stuck(current_track_idx: int) -> void:
+    if track == null or track.sample_points.is_empty():
+        return
+
+    var n: int = track.sample_points.size()
+    var rescue_idx: int = posmod(safe_track_index,n)
+
+    # If the saved point is implausibly far from the current progress,
+    # fall back to a few samples behind the nearest track point.
+    if track.circular_index_distance(rescue_idx,current_track_idx) > 28:
+        rescue_idx = posmod(current_track_idx-4,n)
+
+    global_transform = track.spawn_transform_at(rescue_idx,0.0)
+    ride_height = track.track_height_at(rescue_idx)
+    global_position.y = 0.55 + ride_height
+
+    # Keep a little momentum so recovery feels like a racing-game rescue,
+    # not a full stop / teleport penalty.
+    forward_speed = min(max(abs(forward_speed),5.5),10.0)
+    velocity = -global_transform.basis.z.normalized() * forward_speed
+    steer_state = 0.0
+    throttle_state = 0.0
+    drift_charge = 0.0
+    was_drifting = false
+    active_shortcut_id = ""
+    shortcut_entry_valid = false
+    shortcut_fail_cooldown = 0.6
+    boost_pad_cooldown = 0.45
+    last_motion_position = global_position
 
 func _update_lap(idx: int) -> void:
     if track.checkpoint_indices.is_empty():

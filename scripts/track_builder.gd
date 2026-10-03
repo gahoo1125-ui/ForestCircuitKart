@@ -1105,10 +1105,9 @@ func confine_to_road(world_pos: Vector3, track_index: int) -> Vector3:
     if sample_points.is_empty():
         return world_pos
 
-    var shortcut: Dictionary = shortcut_info(world_pos)
-    if bool(shortcut.get("active",false)):
-        return confine_to_shortcut(world_pos,shortcut)
-
+    # Normal-road confinement is intentionally independent from shortcuts.
+    # Shortcut confinement is handled explicitly by KartController only after
+    # its entry requirement has been validated. This prevents entrance trapping.
     var idx: int = posmod(track_index,sample_points.size())
     var center: Vector3 = sample_points[idx]
     var tangent: Vector3 = sample_tangents[idx]
