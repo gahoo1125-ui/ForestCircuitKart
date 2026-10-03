@@ -108,75 +108,203 @@ func _build_kart() -> void:
 
     var c: Array = stats.get("color",[0.8,0.2,0.2])
     var body_mat: StandardMaterial3D = StandardMaterial3D.new()
+    var dark: StandardMaterial3D = StandardMaterial3D.new()
+
     if kart_id == "gold":
-        body_mat.albedo_color = Color(0.055,0.055,0.07)
-        body_mat.metallic = 0.86
-        body_mat.roughness = 0.17
+        body_mat.albedo_color = Color(0.035,0.038,0.050)
+        body_mat.metallic = 0.90
+        body_mat.roughness = 0.12
+
+        dark.albedo_color = Color(0.010,0.012,0.018)
+        dark.metallic = 0.72
+        dark.roughness = 0.16
+
+        _build_gold_foundation(root,body_mat,dark)
+        _build_gold_hypercar(root)
     else:
         body_mat.albedo_color = Color(float(c[0]),float(c[1]),float(c[2]))
-        body_mat.metallic = 0.72
-        body_mat.roughness = 0.22
+        body_mat.metallic = 0.22
+        body_mat.roughness = 0.34
 
-    var dark: StandardMaterial3D = StandardMaterial3D.new()
-    dark.albedo_color = Color(0.035,0.04,0.05)
-    dark.metallic = 0.25
-    dark.roughness = 0.35
+        dark.albedo_color = Color(0.040,0.048,0.060)
+        dark.metallic = 0.12
+        dark.roughness = 0.42
 
-    var body: MeshInstance3D = MeshInstance3D.new()
-    var body_mesh: BoxMesh = BoxMesh.new()
-    body_mesh.size = Vector3(1.7,0.42,2.55)
-    body.mesh = body_mesh
-    body.position.y = 0.34
-    body.material_override = body_mat
-    root.add_child(body)
-
-    var nose: MeshInstance3D = MeshInstance3D.new()
-    var nose_mesh: BoxMesh = BoxMesh.new()
-    nose_mesh.size = Vector3(1.25,0.22,0.95)
-    nose.mesh = nose_mesh
-    nose.position = Vector3(0,0.52,-1.45)
-    nose.rotation_degrees.x = 10
-    nose.material_override = body_mat
-    root.add_child(nose)
-
-    var cockpit: MeshInstance3D = MeshInstance3D.new()
-    var cockpit_mesh: SphereMesh = SphereMesh.new()
-    cockpit_mesh.radius = 0.55
-    cockpit_mesh.height = 0.82
-    cockpit.mesh = cockpit_mesh
-    cockpit.scale = Vector3(0.8,0.48,1.05)
-    cockpit.position = Vector3(0,0.72,0.15)
-    cockpit.material_override = dark
-    root.add_child(cockpit)
-
-    var wing: MeshInstance3D = MeshInstance3D.new()
-    var wing_mesh: BoxMesh = BoxMesh.new()
-    wing_mesh.size = Vector3(1.75,0.10,0.45)
-    wing.mesh = wing_mesh
-    wing.position = Vector3(0,0.78,1.35)
-    wing.material_override = body_mat
-    root.add_child(wing)
-
-    for x in [-0.95,0.95]:
-        for z in [-0.9,0.9]:
-            var wheel: MeshInstance3D = MeshInstance3D.new()
-            var wheel_mesh: CylinderMesh = CylinderMesh.new()
-            wheel_mesh.top_radius = 0.32
-            wheel_mesh.bottom_radius = 0.32
-            wheel_mesh.height = 0.28
-            wheel.mesh = wheel_mesh
-            wheel.rotation_degrees.z = 90
-            wheel.position = Vector3(float(x),0.28,float(z))
-            wheel.material_override = dark
-            root.add_child(wheel)
+        _build_cute_kart(root,body_mat,dark,c)
 
     _build_speed_fx()
 
     if kart_id == "gold":
-        _build_gold_hypercar(root)
         _build_gold_dragon(root)
         _build_gold_boost()
         _build_gold_dragon_flight()
+
+func _build_cute_kart(root: Node3D, body_mat: StandardMaterial3D, dark: StandardMaterial3D, c: Array) -> void:
+    var light_mat: StandardMaterial3D = StandardMaterial3D.new()
+    light_mat.albedo_color = Color(0.92,0.98,1.0)
+    light_mat.emission_enabled = true
+    light_mat.emission = Color(0.45,0.84,1.0)
+    light_mat.emission_energy_multiplier = 2.1
+    light_mat.roughness = 0.16
+
+    var cream_mat: StandardMaterial3D = StandardMaterial3D.new()
+    cream_mat.albedo_color = Color(
+        min(1.0,float(c[0])*0.55+0.45),
+        min(1.0,float(c[1])*0.55+0.45),
+        min(1.0,float(c[2])*0.55+0.45)
+    )
+    cream_mat.metallic = 0.08
+    cream_mat.roughness = 0.42
+
+    # Main body: short, wide and rounded like a toy kart.
+    var body: MeshInstance3D = MeshInstance3D.new()
+    var body_mesh: SphereMesh = SphereMesh.new()
+    body_mesh.radius = 0.96
+    body_mesh.height = 1.65
+    body.mesh = body_mesh
+    body.scale = Vector3(1.05,0.43,1.38)
+    body.position = Vector3(0.0,0.46,0.06)
+    body.material_override = body_mat
+    root.add_child(body)
+
+    # Puffy front bumper / nose.
+    var nose: MeshInstance3D = MeshInstance3D.new()
+    var nose_mesh: SphereMesh = SphereMesh.new()
+    nose_mesh.radius = 0.69
+    nose_mesh.height = 1.00
+    nose.mesh = nose_mesh
+    nose.scale = Vector3(1.08,0.34,0.78)
+    nose.position = Vector3(0.0,0.46,-1.08)
+    nose.material_override = cream_mat
+    root.add_child(nose)
+
+    # Bubble cockpit.
+    var cockpit: MeshInstance3D = MeshInstance3D.new()
+    var cockpit_mesh: SphereMesh = SphereMesh.new()
+    cockpit_mesh.radius = 0.58
+    cockpit_mesh.height = 0.92
+    cockpit.mesh = cockpit_mesh
+    cockpit.scale = Vector3(0.82,0.56,0.92)
+    cockpit.position = Vector3(0.0,0.88,0.16)
+    cockpit.material_override = dark
+    root.add_child(cockpit)
+
+    # Friendly round headlights.
+    for side in [-1.0,1.0]:
+        var lamp: MeshInstance3D = MeshInstance3D.new()
+        var lamp_mesh: SphereMesh = SphereMesh.new()
+        lamp_mesh.radius = 0.15
+        lamp_mesh.height = 0.20
+        lamp.mesh = lamp_mesh
+        lamp.scale = Vector3(1.12,0.72,0.55)
+        lamp.position = Vector3(float(side)*0.48,0.54,-1.55)
+        lamp.material_override = light_mat
+        root.add_child(lamp)
+
+    # Rounded rear bumper instead of a rigid racing wing.
+    var rear: MeshInstance3D = MeshInstance3D.new()
+    var rear_mesh: SphereMesh = SphereMesh.new()
+    rear_mesh.radius = 0.58
+    rear_mesh.height = 0.58
+    rear.mesh = rear_mesh
+    rear.scale = Vector3(1.28,0.30,0.48)
+    rear.position = Vector3(0.0,0.47,1.24)
+    rear.material_override = cream_mat
+    root.add_child(rear)
+
+    # Chunky but slightly smaller wheels make the body feel cute and oversized.
+    for x in [-0.91,0.91]:
+        for z in [-0.78,0.86]:
+            var wheel: MeshInstance3D = MeshInstance3D.new()
+            var wheel_mesh: CylinderMesh = CylinderMesh.new()
+            wheel_mesh.top_radius = 0.29
+            wheel_mesh.bottom_radius = 0.29
+            wheel_mesh.height = 0.26
+            wheel.mesh = wheel_mesh
+            wheel.rotation_degrees.z = 90
+            wheel.position = Vector3(float(x),0.30,float(z))
+            wheel.material_override = dark
+            root.add_child(wheel)
+
+            var hub: MeshInstance3D = MeshInstance3D.new()
+            var hub_mesh: CylinderMesh = CylinderMesh.new()
+            hub_mesh.top_radius = 0.12
+            hub_mesh.bottom_radius = 0.12
+            hub_mesh.height = 0.285
+            hub.mesh = hub_mesh
+            hub.rotation_degrees.z = 90
+            hub.position = Vector3(float(x),0.30,float(z))
+            hub.material_override = cream_mat
+            root.add_child(hub)
+
+    # Small characterful details keep each family from looking identical.
+    if kart_id.contains("koala"):
+        for side in [-1.0,1.0]:
+            var ear: MeshInstance3D = MeshInstance3D.new()
+            var ear_mesh: SphereMesh = SphereMesh.new()
+            ear_mesh.radius = 0.21
+            ear_mesh.height = 0.25
+            ear.mesh = ear_mesh
+            ear.scale = Vector3(1.0,0.82,0.58)
+            ear.position = Vector3(float(side)*0.46,1.15,0.20)
+            ear.material_override = cream_mat
+            root.add_child(ear)
+
+    elif kart_id.contains("yanghyunhoo"):
+        for side in [-1.0,1.0]:
+            var cheek: MeshInstance3D = MeshInstance3D.new()
+            var cheek_mesh: SphereMesh = SphereMesh.new()
+            cheek_mesh.radius = 0.18
+            cheek_mesh.height = 0.24
+            cheek.mesh = cheek_mesh
+            cheek.scale = Vector3(1.0,0.58,0.72)
+            cheek.position = Vector3(float(side)*0.68,0.48,-1.24)
+            cheek.material_override = cream_mat
+            root.add_child(cheek)
+
+    elif kart_id == "phantom":
+        var visor: MeshInstance3D = MeshInstance3D.new()
+        var visor_mesh: BoxMesh = BoxMesh.new()
+        visor_mesh.size = Vector3(0.92,0.08,0.18)
+        visor.mesh = visor_mesh
+        visor.position = Vector3(0.0,0.88,-0.48)
+        visor.rotation_degrees.x = -8.0
+        visor.material_override = light_mat
+        root.add_child(visor)
+
+func _build_gold_foundation(root: Node3D, body_mat: StandardMaterial3D, dark: StandardMaterial3D) -> void:
+    # Gold/endgame kart stays low, sharp and intentionally unlike the cute lineup.
+    var lower_body: MeshInstance3D = MeshInstance3D.new()
+    var lower_mesh: BoxMesh = BoxMesh.new()
+    lower_mesh.size = Vector3(1.74,0.28,2.72)
+    lower_body.mesh = lower_mesh
+    lower_body.position = Vector3(0.0,0.29,0.02)
+    lower_body.material_override = body_mat
+    root.add_child(lower_body)
+
+    var canopy: MeshInstance3D = MeshInstance3D.new()
+    var canopy_mesh: SphereMesh = SphereMesh.new()
+    canopy_mesh.radius = 0.49
+    canopy_mesh.height = 0.72
+    canopy.mesh = canopy_mesh
+    canopy.scale = Vector3(0.72,0.34,1.04)
+    canopy.position = Vector3(0.0,0.62,0.18)
+    canopy.material_override = dark
+    root.add_child(canopy)
+
+    # Thin blade-like wheel treatment.
+    for x in [-1.01,1.01]:
+        for z in [-0.91,0.91]:
+            var wheel: MeshInstance3D = MeshInstance3D.new()
+            var wheel_mesh: CylinderMesh = CylinderMesh.new()
+            wheel_mesh.top_radius = 0.30
+            wheel_mesh.bottom_radius = 0.30
+            wheel_mesh.height = 0.24
+            wheel.mesh = wheel_mesh
+            wheel.rotation_degrees.z = 90
+            wheel.position = Vector3(float(x),0.27,float(z))
+            wheel.material_override = dark
+            root.add_child(wheel)
 
 func _build_gold_hypercar(root: Node3D) -> void:
     var black_mat: StandardMaterial3D = StandardMaterial3D.new()
@@ -207,9 +335,9 @@ func _build_gold_hypercar(root: Node3D) -> void:
     # Long wedge nose and split blades.
     var center_wedge: MeshInstance3D = MeshInstance3D.new()
     var center_wedge_mesh: BoxMesh = BoxMesh.new()
-    center_wedge_mesh.size = Vector3(0.78,0.16,1.62)
+    center_wedge_mesh.size = Vector3(0.72,0.12,1.82)
     center_wedge.mesh = center_wedge_mesh
-    center_wedge.position = Vector3(0.0,0.43,-1.46)
+    center_wedge.position = Vector3(0.0,0.38,-1.56)
     center_wedge.rotation_degrees.x = 16.0
     center_wedge.material_override = graphite_mat
     root.add_child(center_wedge)
@@ -282,9 +410,9 @@ func _build_gold_hypercar(root: Node3D) -> void:
 
         var headlight: MeshInstance3D = MeshInstance3D.new()
         var headlight_mesh: BoxMesh = BoxMesh.new()
-        headlight_mesh.size = Vector3(0.34,0.045,0.12)
+        headlight_mesh.size = Vector3(0.40,0.030,0.085)
         headlight.mesh = headlight_mesh
-        headlight.position = Vector3(s*0.37,0.60,-1.42)
+        headlight.position = Vector3(s*0.39,0.52,-1.52)
         headlight.rotation_degrees = Vector3(0.0,s*-12.0,s*5.0)
         headlight.material_override = blue_light
         root.add_child(headlight)
@@ -301,7 +429,7 @@ func _build_gold_hypercar(root: Node3D) -> void:
 
         var rear_fin: MeshInstance3D = MeshInstance3D.new()
         var rear_fin_mesh: BoxMesh = BoxMesh.new()
-        rear_fin_mesh.size = Vector3(0.33,0.12,0.78)
+        rear_fin_mesh.size = Vector3(0.28,0.08,0.96)
         rear_fin.mesh = rear_fin_mesh
         rear_fin.position = Vector3(s*0.69,1.36,1.33)
         rear_fin.rotation_degrees = Vector3(-10.0,s*12.0,s*22.0)
