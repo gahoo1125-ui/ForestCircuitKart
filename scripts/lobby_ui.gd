@@ -731,13 +731,23 @@ func _create_preview_character(id: String) -> Node3D:
     var is_gold: bool = id == "gold"
 
     var body_mat: StandardMaterial3D = StandardMaterial3D.new()
-    body_mat.albedo_color = Color(0.025,0.03,0.04) if is_gold else Color(0.16,0.62,0.92)
-    body_mat.metallic = 0.65 if is_gold else 0.12
-    body_mat.roughness = 0.22 if is_gold else 0.50
+    body_mat.albedo_color = Color(0.018,0.022,0.030) if is_gold else Color(0.16,0.62,0.92)
+    body_mat.metallic = 0.78 if is_gold else 0.12
+    body_mat.roughness = 0.16 if is_gold else 0.50
 
     var accent: StandardMaterial3D = StandardMaterial3D.new()
-    accent.albedo_color = Color(1.0,0.72,0.10) if is_gold else Color(0.90,0.96,1.0)
-    accent.metallic = 0.85 if is_gold else 0.05
+    accent.albedo_color = Color(0.96,0.70,0.12) if is_gold else Color(0.90,0.96,1.0)
+    accent.metallic = 0.92 if is_gold else 0.05
+    accent.roughness = 0.10 if is_gold else 0.42
+    if is_gold:
+        accent.emission_enabled = true
+        accent.emission = Color(0.28,0.12,0.01)
+        accent.emission_energy_multiplier = 1.15
+
+    var visor_mat: StandardMaterial3D = StandardMaterial3D.new()
+    visor_mat.albedo_color = Color(0.015,0.020,0.030)
+    visor_mat.metallic = 0.70
+    visor_mat.roughness = 0.06
 
     var body: MeshInstance3D = MeshInstance3D.new()
     var bm: CylinderMesh = CylinderMesh.new()
@@ -755,30 +765,79 @@ func _create_preview_character(id: String) -> Node3D:
     hm.height = 0.62
     head.mesh = hm
     head.position.y = 1.72
-    head.material_override = accent
+    head.material_override = body_mat if is_gold else accent
     root.add_child(head)
 
+    if is_gold:
+        # Dark racing visor.
+        var visor: MeshInstance3D = MeshInstance3D.new()
+        var vm: BoxMesh = BoxMesh.new()
+        vm.size = Vector3(0.48,0.17,0.06)
+        visor.mesh = vm
+        visor.position = Vector3(0.0,1.74,-0.29)
+        visor.material_override = visor_mat
+        root.add_child(visor)
+
+        # Gold helmet center stripe.
+        var stripe: MeshInstance3D = MeshInstance3D.new()
+        var stripe_mesh: BoxMesh = BoxMesh.new()
+        stripe_mesh.size = Vector3(0.075,0.39,0.075)
+        stripe.mesh = stripe_mesh
+        stripe.position = Vector3(0.0,1.91,-0.12)
+        stripe.rotation_degrees.x = 30.0
+        stripe.material_override = accent
+        root.add_child(stripe)
+
+        # Chest armor.
+        var chest: MeshInstance3D = MeshInstance3D.new()
+        var chest_mesh: BoxMesh = BoxMesh.new()
+        chest_mesh.size = Vector3(0.46,0.32,0.16)
+        chest.mesh = chest_mesh
+        chest.position = Vector3(0.0,1.14,-0.20)
+        chest.material_override = accent
+        root.add_child(chest)
+
+        # Gold waist belt.
+        var belt: MeshInstance3D = MeshInstance3D.new()
+        var belt_mesh: BoxMesh = BoxMesh.new()
+        belt_mesh.size = Vector3(0.54,0.08,0.20)
+        belt.mesh = belt_mesh
+        belt.position = Vector3(0.0,0.75,-0.08)
+        belt.material_override = accent
+        root.add_child(belt)
+
     for side in [-1.0,1.0]:
+        var s: float = float(side)
         var arm: MeshInstance3D = MeshInstance3D.new()
         var am: CylinderMesh = CylinderMesh.new()
         am.top_radius = 0.10
         am.bottom_radius = 0.12
         am.height = 0.82
         arm.mesh = am
-        arm.position = Vector3(float(side)*0.48,1.05,0.0)
-        arm.rotation_degrees.z = float(side)*-16.0
+        arm.position = Vector3(s*0.48,1.05,0.0)
+        arm.rotation_degrees.z = s*-16.0
         arm.material_override = body_mat
         root.add_child(arm)
 
         if is_gold:
+            var shoulder: MeshInstance3D = MeshInstance3D.new()
+            var shoulder_mesh: BoxMesh = BoxMesh.new()
+            shoulder_mesh.size = Vector3(0.28,0.18,0.30)
+            shoulder.mesh = shoulder_mesh
+            shoulder.position = Vector3(s*0.45,1.34,-0.02)
+            shoulder.rotation_degrees.z = s*-10.0
+            shoulder.material_override = accent
+            root.add_child(shoulder)
+
+            # Small dragon horn fins on the helmet.
             var horn: MeshInstance3D = MeshInstance3D.new()
             var hornm: CylinderMesh = CylinderMesh.new()
             hornm.top_radius = 0.0
-            hornm.bottom_radius = 0.075
-            hornm.height = 0.48
+            hornm.bottom_radius = 0.060
+            hornm.height = 0.38
             horn.mesh = hornm
-            horn.position = Vector3(float(side)*0.18,2.05,0.0)
-            horn.rotation_degrees.z = float(side)*-32.0
+            horn.position = Vector3(s*0.17,2.03,0.01)
+            horn.rotation_degrees.z = s*-30.0
             horn.material_override = accent
             root.add_child(horn)
 
