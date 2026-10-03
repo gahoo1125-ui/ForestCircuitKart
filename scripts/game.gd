@@ -773,8 +773,8 @@ func _show_podium(total_time: float) -> void:
     root.add_child(center)
 
     var main_v: VBoxContainer = VBoxContainer.new()
-    main_v.custom_minimum_size = Vector2(980,620)
-    main_v.add_theme_constant_override("separation",18)
+    main_v.custom_minimum_size = Vector2(940,560)
+    main_v.add_theme_constant_override("separation",12)
     center.add_child(main_v)
 
     var title: Label = Label.new()
@@ -855,24 +855,45 @@ func _show_podium(total_time: float) -> void:
         dnf.add_theme_font_size_override("font_size",15)
         main_v.add_child(dnf)
 
+    # Fixed result-screen action button.
+    # It is attached directly to the full-screen root instead of the result VBox,
+    # so long podium/reward/DNF content can never push it outside the viewport.
     var lobby_button: Button = Button.new()
     lobby_button.text = "로비로 복귀"
-    lobby_button.custom_minimum_size = Vector2(360,62)
-    lobby_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-    lobby_button.add_theme_font_size_override("font_size",22)
+    lobby_button.anchor_left = 1.0
+    lobby_button.anchor_right = 1.0
+    lobby_button.anchor_top = 1.0
+    lobby_button.anchor_bottom = 1.0
+    lobby_button.offset_left = -270.0
+    lobby_button.offset_right = -24.0
+    lobby_button.offset_top = -84.0
+    lobby_button.offset_bottom = -24.0
+    lobby_button.add_theme_font_size_override("font_size",21)
+    lobby_button.z_index = 30
+    lobby_button.mouse_filter = Control.MOUSE_FILTER_STOP
 
     var lobby_normal: StyleBoxFlat = StyleBoxFlat.new()
-    lobby_normal.bg_color = Color(0.08,0.62,0.92,0.98)
-    lobby_normal.border_color = Color(0.42,0.90,1.0,1.0)
+    lobby_normal.bg_color = Color(0.05,0.52,0.86,0.98)
+    lobby_normal.border_color = Color(0.40,0.88,1.0,1.0)
     lobby_normal.set_border_width_all(2)
-    lobby_normal.corner_radius_top_left = 9
-    lobby_normal.corner_radius_top_right = 9
-    lobby_normal.corner_radius_bottom_left = 9
-    lobby_normal.corner_radius_bottom_right = 9
-    lobby_button.add_theme_stylebox_override("normal",lobby_normal)
+    lobby_normal.corner_radius_top_left = 10
+    lobby_normal.corner_radius_top_right = 10
+    lobby_normal.corner_radius_bottom_left = 10
+    lobby_normal.corner_radius_bottom_right = 10
+    lobby_normal.shadow_color = Color(0.0,0.0,0.0,0.55)
+    lobby_normal.shadow_size = 8
 
+    var lobby_hover: StyleBoxFlat = lobby_normal.duplicate()
+    lobby_hover.bg_color = Color(0.08,0.66,1.0,1.0)
+    lobby_hover.border_color = Color(0.72,0.96,1.0,1.0)
+
+    lobby_button.add_theme_stylebox_override("normal",lobby_normal)
+    lobby_button.add_theme_stylebox_override("hover",lobby_hover)
+    lobby_button.add_theme_stylebox_override("pressed",lobby_hover)
+    lobby_button.add_theme_color_override("font_color",Color.WHITE)
+    lobby_button.add_theme_color_override("font_hover_color",Color.WHITE)
     lobby_button.pressed.connect(_return_to_lobby)
-    main_v.add_child(lobby_button)
+    root.add_child(lobby_button)
 
 func _make_podium_card(rank_number: int, entry: Dictionary, is_player: bool, first_time: float) -> PanelContainer:
     var card: PanelContainer = PanelContainer.new()
