@@ -131,12 +131,14 @@ func setup_preview(id: String) -> void:
 func _build_kart() -> void:
     var collider: CollisionShape3D = CollisionShape3D.new()
     var shape: BoxShape3D = BoxShape3D.new()
-    shape.size = Vector3(1.8,0.8,2.7)
+    # Slightly smaller kart footprint to match the wider arcade track scale.
+    shape.size = Vector3(1.58,0.72,2.38)
     collider.shape = shape
-    collider.position.y = 0.4
+    collider.position.y = 0.36
     add_child(collider)
 
     var root: Node3D = Node3D.new()
+    root.scale = Vector3(0.86,0.86,0.86)
     add_child(root)
 
     var c: Array = stats.get("color",[0.8,0.2,0.2])

@@ -1,7 +1,7 @@
 extends Node3D
 class_name TrackBuilder
 
-var road_width: float = 16.5
+var road_width: float = 23.5
 var upper_sections: Array[Dictionary] = []
 var boost_indices: Array[int] = []
 var sample_points: Array[Vector3] = []
