@@ -47,9 +47,9 @@ def make_principled(name, base, metallic, rough, emission=None, emission_strengt
 
 carbon_black = make_principled("RB_CarbonBlack",(0.004,0.005,0.008),0.72,0.14)
 carbon_soft  = make_principled("RB_CarbonSoft",(0.015,0.017,0.022),0.60,0.20)
-metal_red    = make_principled("RB_MetallicRed",(0.42,0.006,0.010),0.98,0.10)
-deep_red     = make_principled("RB_DeepRed",(0.16,0.002,0.004),0.94,0.14)
-red_glow     = make_principled("RB_RedGlow",(0.60,0.008,0.006),0.45,0.06,(1.0,0.015,0.006),6.0)
+metal_red    = make_principled("RB_MetallicRed",(0.50,0.0025,0.006),1.0,0.07,(0.11,0.0015,0.0020),0.75)
+deep_red     = make_principled("RB_DeepRed",(0.23,0.002,0.004),0.98,0.10,(0.055,0.0005,0.0008),0.55)
+red_glow     = make_principled("RB_RedGlow",(0.72,0.010,0.014),0.55,0.045,(1.0,0.018,0.010),6.5)
 headlight    = make_principled("RB_Headlight",(1.0,0.68,0.58),0.25,0.05,(1.0,0.18,0.08),4.0)
 tire_mat     = make_principled("RB_Tire",(0.003,0.0035,0.004),0.0,0.82)
 wheel_dark   = make_principled("RB_WheelDark",(0.008,0.009,0.012),0.88,0.15)

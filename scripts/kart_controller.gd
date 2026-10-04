@@ -46,22 +46,22 @@ var landing_impact_timer: float = 0.0
 var was_airborne_last_frame: bool = false
 
 # Fast, readable arcade handling.
-const ARCADE_GRIP_MULT: float = 1.74
-const ARCADE_DRIFT_GRIP_MULT: float = 0.36
+const ARCADE_GRIP_MULT: float = 1.56
+const ARCADE_DRIFT_GRIP_MULT: float = 0.31
 const STEER_RESPONSE_LOW: float = 13.0
 const STEER_RESPONSE_HIGH: float = 8.6
 const DRIFT_STEER_RESPONSE: float = 12.5
-const DRIFT_RECOVERY_RESPONSE: float = 18.0
+const DRIFT_RECOVERY_RESPONSE: float = 14.5
 const THROTTLE_RESPONSE: float = 12.5
 const COLLISION_SPEED_KEEP_WALL: float = 0.58
 const COLLISION_SPEED_KEEP_KART: float = 0.84
 const DRIFT_MIN_SPEED: float = 8.5
 const DRIFT_LONG_TIME: float = 0.72
-const DRIFT_MAX_SLIP_DEG: float = 24.0
-const DRIFT_SHORT_SLIP_DEG: float = 11.0
-const CORNER_SLIP_MAX_DEG: float = 7.5
-const CORNER_SLIP_RESPONSE: float = 7.5
-const CORNER_SLIP_RECOVERY: float = 12.0
+const DRIFT_MAX_SLIP_DEG: float = 27.0
+const DRIFT_SHORT_SLIP_DEG: float = 12.0
+const CORNER_SLIP_MAX_DEG: float = 10.5
+const CORNER_SLIP_RESPONSE: float = 5.8
+const CORNER_SLIP_RECOVERY: float = 8.0
 
 var gold_boost_root: Node3D
 var speed_fx_root: Node3D
@@ -79,6 +79,7 @@ var gold_boost_linger: float = 0.0
 var gold_boost_activation: float = 0.0
 var gold_boost_was_active: bool = false
 var boost_fx_time: float = 0.0
+var gold_red_boost_materials: Array[StandardMaterial3D] = []
 var remote_position: Vector3 = Vector3.ZERO
 var remote_yaw: float = 0.0
 var remote_speed: float = 0.0
@@ -611,7 +612,81 @@ func _build_gold_external_model(root: Node3D) -> bool:
     model_3d.rotation_degrees.y = 180.0
     model_3d.scale = Vector3(0.90,0.90,0.90)
     root.add_child(model_3d)
+    _register_gold_red_boost_materials(model_3d)
     return true
+
+
+func _register_gold_red_boost_materials(model_root: Node3D) -> void:
+    gold_red_boost_materials.clear()
+
+    var stack: Array[Node] = [model_root]
+    while not stack.is_empty():
+        var node: Node = stack.pop_back()
+        for child in node.get_children():
+            stack.append(child)
+
+        if node is MeshInstance3D:
+            var mesh_instance: MeshInstance3D = node as MeshInstance3D
+            if mesh_instance.mesh == null:
+                continue
+
+            for surface_index in range(mesh_instance.mesh.get_surface_count()):
+                var source_mat: Material = mesh_instance.get_active_material(surface_index)
+                if not (source_mat is StandardMaterial3D):
+                    continue
+
+                var source_standard: StandardMaterial3D = source_mat as StandardMaterial3D
+                var material_name: String = source_standard.resource_name
+                if not (
+                    material_name.contains("RB_MetallicRed")
+                    or material_name.contains("RB_DeepRed")
+                    or material_name.contains("RB_RedGlow")
+                ):
+                    continue
+
+                var runtime_mat: StandardMaterial3D = source_standard.duplicate() as StandardMaterial3D
+                runtime_mat.emission_enabled = true
+                mesh_instance.set_surface_override_material(surface_index,runtime_mat)
+                gold_red_boost_materials.append(runtime_mat)
+
+
+func _update_gold_red_boost_glow(boosting: bool, delta: float) -> void:
+    if gold_red_boost_materials.is_empty():
+        return
+
+    var response: float = 1.0-exp(-(10.0 if boosting else 6.0)*delta)
+    for material in gold_red_boost_materials:
+        if material == null:
+            continue
+
+        var material_name: String = material.resource_name
+        var base_color: Color = Color(0.50,0.004,0.008)
+        var idle_emission: Color = Color(0.11,0.0015,0.0020)
+        var boost_color: Color = Color(0.95,0.010,0.016)
+        var boost_emission: Color = Color(1.0,0.015,0.010)
+        var idle_energy: float = 0.75
+        var boost_energy: float = 5.2
+
+        if material_name.contains("RB_DeepRed"):
+            base_color = Color(0.23,0.002,0.004)
+            idle_emission = Color(0.055,0.0005,0.0008)
+            boost_color = Color(0.72,0.006,0.010)
+            boost_energy = 3.8
+        elif material_name.contains("RB_RedGlow"):
+            base_color = Color(0.72,0.010,0.014)
+            idle_emission = Color(0.52,0.004,0.004)
+            idle_energy = 2.2
+            boost_color = Color(1.0,0.025,0.028)
+            boost_emission = Color(1.0,0.020,0.014)
+            boost_energy = 7.0
+
+        var target_color: Color = boost_color if boosting else base_color
+        var target_emission: Color = boost_emission if boosting else idle_emission
+        var target_energy: float = boost_energy if boosting else idle_energy
+
+        material.albedo_color = material.albedo_color.lerp(target_color,response)
+        material.emission = material.emission.lerp(target_emission,response)
+        material.emission_energy_multiplier = lerp(material.emission_energy_multiplier,target_energy,response)
 
 
 func _build_gold_foundation(root: Node3D, body_mat: StandardMaterial3D, dark: StandardMaterial3D) -> void:
@@ -1359,6 +1434,9 @@ func _build_gold_dragon_flight() -> void:
 
 func _update_boost_fx(delta: float, boosting: bool) -> void:
     boost_fx_time += delta
+
+    if kart_id == "gold":
+        _update_gold_red_boost_glow(boosting,delta)
 
     # No lingering afterimage. VFX exists only while boost is actually active.
     if speed_fx_root:
