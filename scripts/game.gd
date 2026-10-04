@@ -185,10 +185,16 @@ func _build_world() -> void:
     var env_node: WorldEnvironment = WorldEnvironment.new()
     var env: Environment = Environment.new()
     env.background_mode = Environment.BG_COLOR
-    env.background_color = Color(0.018,0.035,0.075)
+    env.background_color = Color(0.010,0.020,0.042)
     env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-    env.ambient_light_color = Color(0.20,0.27,0.42)
-    env.ambient_light_energy = 0.88
+    env.ambient_light_color = Color(0.18,0.24,0.34)
+    env.ambient_light_energy = 0.78
+    env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+    env.fog_enabled = true
+    env.fog_light_color = Color(0.18,0.24,0.30)
+    env.fog_light_energy = 0.55
+    env.fog_density = 0.0065
+    env.fog_sky_affect = 0.62
     env_node.environment = env
     add_child(env_node)
 

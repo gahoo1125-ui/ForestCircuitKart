@@ -77,11 +77,16 @@ func _mat(color: Color, metallic: float = 0.0, roughness: float = 0.9) -> Standa
 
 func _build_ground() -> void:
     var ground: MeshInstance3D = MeshInstance3D.new()
+    ground.name = "HQForestGround"
     var mesh: PlaneMesh = PlaneMesh.new()
-    mesh.size = Vector2(410, 370)
+    mesh.size = Vector2(560,520)
+    mesh.subdivide_width = 8
+    mesh.subdivide_depth = 8
     ground.mesh = mesh
-    ground.material_override = _mat(Color(0.022,0.075,0.045),0.0,0.94)
+    var mat: StandardMaterial3D = _mat(Color(0.018,0.055,0.032),0.0,0.98)
+    ground.material_override = mat
     ground.position.y = -0.10
+    ground.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     add_child(ground)
 
 func _build_track() -> void:
@@ -196,72 +201,113 @@ func _build_continuous_road_surface() -> void:
 
     var road: MeshInstance3D = MeshInstance3D.new()
     road.mesh = road_mesh
-    road.material_override = _mat(Color(0.105,0.115,0.135),0.06,0.72)
+    var road_mat: StandardMaterial3D = _mat(Color(0.070,0.075,0.086),0.10,0.56)
+    road_mat.specular_mode = BaseMaterial3D.SPECULAR_SCHLICK_GGX
+    road.material_override = road_mat
     add_child(road)
 
 func _build_scenery() -> void:
-    var trunk_mat: StandardMaterial3D = _mat(Color(0.19,0.085,0.035),0.0,0.96)
-    var leaf_mat: StandardMaterial3D = _mat(Color(0.025,0.22,0.065),0.0,0.92)
-    var leaf_light: StandardMaterial3D = _mat(Color(0.08,0.34,0.10),0.0,0.90)
-    var rock_mat: StandardMaterial3D = _mat(Color(0.20,0.23,0.20),0.02,0.98)
-    var bush_mat: StandardMaterial3D = _mat(Color(0.055,0.30,0.075),0.0,0.95)
+    if sample_points.is_empty():
+        return
 
-    for i in range(0,sample_points.size(),8):
+    var root: Node3D = Node3D.new()
+    root.name = "OptimizedForestScenery"
+    add_child(root)
+
+    var trunk_mat: StandardMaterial3D = _mat(Color(0.105,0.045,0.020),0.0,0.96)
+    var pine_mat: StandardMaterial3D = _mat(Color(0.018,0.135,0.045),0.0,0.93)
+    var pine_light_mat: StandardMaterial3D = _mat(Color(0.035,0.215,0.070),0.0,0.91)
+    var rock_mat: StandardMaterial3D = _mat(Color(0.16,0.18,0.17),0.02,0.96)
+    var bush_mat: StandardMaterial3D = _mat(Color(0.025,0.20,0.055),0.0,0.95)
+
+    var trunk_mesh: CylinderMesh = CylinderMesh.new()
+    trunk_mesh.top_radius = 0.22
+    trunk_mesh.bottom_radius = 0.42
+    trunk_mesh.height = 4.8
+    trunk_mesh.radial_segments = 7
+
+    var pine_mesh: CylinderMesh = CylinderMesh.new()
+    pine_mesh.top_radius = 0.0
+    pine_mesh.bottom_radius = 2.05
+    pine_mesh.height = 5.6
+    pine_mesh.radial_segments = 8
+
+    var pine_top_mesh: CylinderMesh = CylinderMesh.new()
+    pine_top_mesh.top_radius = 0.0
+    pine_top_mesh.bottom_radius = 1.45
+    pine_top_mesh.height = 4.0
+    pine_top_mesh.radial_segments = 8
+
+    var bush_mesh: SphereMesh = SphereMesh.new()
+    bush_mesh.radius = 0.78
+    bush_mesh.height = 1.05
+    bush_mesh.radial_segments = 8
+    bush_mesh.rings = 4
+
+    var rock_mesh: SphereMesh = SphereMesh.new()
+    rock_mesh.radius = 1.0
+    rock_mesh.height = 1.55
+    rock_mesh.radial_segments = 8
+    rock_mesh.rings = 4
+
+    var trunk_transforms: Array[Transform3D] = []
+    var lower_transforms: Array[Transform3D] = []
+    var upper_transforms: Array[Transform3D] = []
+    var bush_transforms: Array[Transform3D] = []
+    var rock_transforms: Array[Transform3D] = []
+
+    var n: int = sample_points.size()
+    for i in range(0,n,7):
         var p: Vector3 = sample_points[i]
-        var tangent: Vector3 = sample_tangents[i]
+        var tangent: Vector3 = sample_tangents[i].normalized()
         var right: Vector3 = Vector3(-tangent.z,0.0,tangent.x).normalized()
 
         for side in [-1.0,1.0]:
             var s: float = float(side)
-            var depth: float = 7.8 + float((i/8)%3)*2.4
-            var base: Vector3 = p + right*s*(road_width*0.5+depth)
+            var variant: int = (i*17 + int((s+1.0)*7.0)) % 11
+            var depth: float = 8.0 + float(variant%5)*2.1
+            var base: Vector3 = p + right*s*(road_width*0.5+depth) + tangent*(float((variant%3)-1)*1.6)
+            var sc: float = 0.86 + float(variant%6)*0.10
+            var yaw: float = deg_to_rad(float((i*31+variant*47)%360))
+            var basis: Basis = Basis(Vector3.UP,yaw).scaled(Vector3(sc,sc,sc))
 
-            # Mixed-height trees make the forest less repetitive.
-            var tree_scale: float = 0.82 + float((i+int(side))%4)*0.11
-            var trunk: MeshInstance3D = MeshInstance3D.new()
-            var cyl: CylinderMesh = CylinderMesh.new()
-            cyl.top_radius = 0.25*tree_scale
-            cyl.bottom_radius = 0.48*tree_scale
-            cyl.height = 4.4*tree_scale
-            trunk.mesh = cyl
-            trunk.position = base + Vector3.UP*(2.2*tree_scale)
-            trunk.material_override = trunk_mat
-            add_child(trunk)
+            trunk_transforms.append(Transform3D(basis,base+Vector3.UP*(2.4*sc)))
+            lower_transforms.append(Transform3D(basis,base+Vector3.UP*(5.1*sc)))
+            upper_transforms.append(Transform3D(basis,base+Vector3.UP*(7.25*sc)))
 
-            for crown_i in range(2):
-                var crown: MeshInstance3D = MeshInstance3D.new()
-                var cone: CylinderMesh = CylinderMesh.new()
-                cone.top_radius = 0.0
-                cone.bottom_radius = (2.0-float(crown_i)*0.28)*tree_scale
-                cone.height = (4.4-float(crown_i)*0.45)*tree_scale
-                crown.mesh = cone
-                crown.position = base + Vector3.UP*((5.2+float(crown_i)*1.3)*tree_scale)
-                crown.material_override = leaf_mat if crown_i == 0 else leaf_light
-                add_child(crown)
+            if i%14 == 0:
+                var bush_base: Vector3 = p+right*s*(road_width*0.5+3.3+float(variant%3)*0.7)+tangent*(float(variant%4)-1.5)*0.9
+                var bush_basis: Basis = Basis(Vector3.UP,yaw*0.73).scaled(Vector3(1.25+float(variant%3)*0.12,0.68,0.95))
+                bush_transforms.append(Transform3D(bush_basis,bush_base+Vector3.UP*0.48))
 
-            # Low bushes close to the road edge.
-            var bush: MeshInstance3D = MeshInstance3D.new()
-            var bush_mesh: SphereMesh = SphereMesh.new()
-            bush_mesh.radius = 0.75
-            bush_mesh.height = 1.1
-            bush.mesh = bush_mesh
-            bush.scale = Vector3(1.35,0.58,0.92)
-            bush.position = p + right*s*(road_width*0.5+3.3) + Vector3.UP*0.48
-            bush.material_override = bush_mat
-            add_child(bush)
+            if i%28 == 0:
+                var rock_base: Vector3 = p+right*s*(road_width*0.5+5.4+float(variant%4)*1.15)+tangent*(float(variant%3)-1.0)*1.7
+                var rock_basis: Basis = Basis(Vector3.UP,yaw).scaled(Vector3(1.1+float(variant%3)*0.28,0.72+float(variant%2)*0.12,0.9))
+                rock_transforms.append(Transform3D(rock_basis,rock_base+Vector3.UP*0.58))
 
-            # Irregular boulders farther out.
-            if i % 16 == 0:
-                var rock: MeshInstance3D = MeshInstance3D.new()
-                var rock_mesh: SphereMesh = SphereMesh.new()
-                rock_mesh.radius = 1.18
-                rock_mesh.height = 1.75
-                rock.mesh = rock_mesh
-                rock.scale = Vector3(1.15+0.15*s,0.72,0.95)
-                rock.position = base + tangent*(2.0*s) + Vector3.UP*0.58
-                rock.rotation_degrees = Vector3(0.0,float((i*13)%360),8.0*s)
-                rock.material_override = rock_mat
-                add_child(rock)
+    _add_multimesh(root,"TreeTrunks",trunk_mesh,trunk_mat,trunk_transforms)
+    _add_multimesh(root,"PineCrownsLow",pine_mesh,pine_mat,lower_transforms)
+    _add_multimesh(root,"PineCrownsHigh",pine_top_mesh,pine_light_mat,upper_transforms)
+    _add_multimesh(root,"RoadsideBushes",bush_mesh,bush_mat,bush_transforms)
+    _add_multimesh(root,"RoadsideRocks",rock_mesh,rock_mat,rock_transforms)
+
+func _add_multimesh(parent: Node3D, node_name: String, mesh: Mesh, material: Material, transforms: Array[Transform3D]) -> void:
+    if transforms.is_empty():
+        return
+    var mm: MultiMesh = MultiMesh.new()
+    mm.transform_format = MultiMesh.TRANSFORM_3D
+    mm.mesh = mesh
+    mm.instance_count = transforms.size()
+    for i in range(transforms.size()):
+        mm.set_instance_transform(i,transforms[i])
+
+    var instance: MultiMeshInstance3D = MultiMeshInstance3D.new()
+    instance.name = node_name
+    instance.multimesh = mm
+    instance.material_override = material
+    instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+    parent.add_child(instance)
+
 
 func _build_stunt_elements() -> void:
     upper_sections.clear()
@@ -1324,86 +1370,166 @@ func _build_bamboo_temple_environment() -> void:
         return
 
     var root: Node3D = Node3D.new()
-    root.name = "BambooTempleEnvironment"
+    root.name = "CinematicForestVisualUpgrade"
     add_child(root)
-
-    var bamboo_mat: StandardMaterial3D = _mat(Color(0.055,0.31,0.10),0.03,0.78)
-    var bamboo_leaf: StandardMaterial3D = _mat(Color(0.035,0.18,0.075),0.0,0.86)
-    var blossom: StandardMaterial3D = _mat(Color(0.92,0.43,0.62),0.0,0.72)
-    blossom.emission_enabled = true
-    blossom.emission = Color(0.12,0.025,0.050)
-    blossom.emission_energy_multiplier = 0.8
-    var trunk: StandardMaterial3D = _mat(Color(0.22,0.095,0.045),0.0,0.90)
-    var red: StandardMaterial3D = _mat(Color(0.42,0.035,0.030),0.22,0.42)
-    var dark_wood: StandardMaterial3D = _mat(Color(0.075,0.030,0.026),0.18,0.40)
-    var roof: StandardMaterial3D = _mat(Color(0.025,0.035,0.050),0.38,0.28)
-    var gold: StandardMaterial3D = _mat(Color(0.94,0.63,0.10),0.86,0.16)
-    gold.emission_enabled = true
-    gold.emission = Color(0.30,0.12,0.01)
-    gold.emission_energy_multiplier = 1.35
-    var lantern: StandardMaterial3D = _mat(Color(1.0,0.72,0.25),0.05,0.18)
-    lantern.emission_enabled = true
-    lantern.emission = Color(1.0,0.45,0.08)
-    lantern.emission_energy_multiplier = 3.0
-    var wall_mat: StandardMaterial3D = _mat(Color(0.48,0.28,0.17),0.0,0.70)
-    var rock: StandardMaterial3D = _mat(Color(0.12,0.14,0.16),0.02,0.92)
 
     var n: int = sample_points.size()
 
-    # Dense but performance-friendly bamboo and cherry blossom rhythm around the circuit.
-    for i in range(0,n,18):
+    # --- Curbs: visual only, inside existing road/collision limits.
+    var curb_mesh: BoxMesh = BoxMesh.new()
+    curb_mesh.size = Vector3(0.72,0.055,1.85)
+    var curb_red: StandardMaterial3D = _mat(Color(0.56,0.025,0.025),0.10,0.48)
+    var curb_white: StandardMaterial3D = _mat(Color(0.76,0.78,0.80),0.08,0.42)
+    var red_transforms: Array[Transform3D] = []
+    var white_transforms: Array[Transform3D] = []
+
+    # --- Drainage strip beside curb.
+    var drain_mesh: BoxMesh = BoxMesh.new()
+    drain_mesh.size = Vector3(0.30,0.035,1.85)
+    var drain_mat: StandardMaterial3D = _mat(Color(0.045,0.050,0.055),0.30,0.55)
+    var drain_transforms: Array[Transform3D] = []
+
+    for i in range(0,n,3):
         var p: Vector3 = sample_points[i]
-        var tangent: Vector3 = sample_tangents[i].normalized()
-        var right: Vector3 = Vector3(-tangent.z,0.0,tangent.x).normalized()
+        var t: Vector3 = sample_tangents[i].normalized()
+        var right: Vector3 = Vector3(-t.z,0.0,t.x).normalized()
+        var yaw: float = atan2(t.x,t.z)
+        var segment_basis: Basis = Basis(Vector3.UP,yaw)
 
         for side in [-1.0,1.0]:
             var s: float = float(side)
-            var outer: Vector3 = p+right*s*(road_width*0.5+12.0+float((i/18)%3)*2.8)
-            _build_bamboo_cluster(root,outer,bamboo_mat,bamboo_leaf,i+int(side*5.0))
+            var curb_pos: Vector3 = p+right*s*(road_width*0.5-0.38)+Vector3.UP*0.072
+            var tr: Transform3D = Transform3D(segment_basis,curb_pos)
+            if ((i/3)+int((s+1.0)*0.5))%2 == 0:
+                red_transforms.append(tr)
+            else:
+                white_transforms.append(tr)
 
-            if i%36 == 0:
-                var cherry: Vector3 = p+right*s*(road_width*0.5+7.0)+tangent*(2.0*s)
-                _build_cherry_tree(root,cherry,trunk,blossom,i+int(side*11.0))
+            var drain_pos: Vector3 = p+right*s*(road_width*0.5-0.95)+Vector3.UP*0.048
+            drain_transforms.append(Transform3D(segment_basis,drain_pos))
 
-        # Roadside lanterns remain outside the collision rails.
-        if i%36 == 0:
-            for side in [-1.0,1.0]:
-                var lp: Vector3 = p+right*float(side)*(road_width*0.5+2.3)
-                _build_lantern(root,lp,0.82,lantern,dark_wood)
+    _add_multimesh(root,"CurbsRed",curb_mesh,curb_red,red_transforms)
+    _add_multimesh(root,"CurbsWhite",curb_mesh,curb_white,white_transforms)
+    _add_multimesh(root,"DrainageStrips",drain_mesh,drain_mat,drain_transforms)
 
-    # Pagoda landmarks at separated corners.
-    for frac in [0.12,0.38,0.63,0.84]:
+    # --- Sparse asphalt wear patches/skid marks, all non-collision.
+    var skid_mesh: BoxMesh = BoxMesh.new()
+    skid_mesh.size = Vector3(0.12,0.012,3.8)
+    var skid_mat: StandardMaterial3D = _mat(Color(0.025,0.026,0.030),0.05,0.62)
+    skid_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+    skid_mat.albedo_color.a = 0.54
+    var skid_transforms: Array[Transform3D] = []
+    for i in range(9,n,22):
+        var p: Vector3 = sample_points[i]
+        var t: Vector3 = sample_tangents[i].normalized()
+        var r: Vector3 = Vector3(-t.z,0.0,t.x).normalized()
+        var yaw: float = atan2(t.x,t.z)
+        for lane in [-0.95,0.95]:
+            skid_transforms.append(Transform3D(Basis(Vector3.UP,yaw),p+r*float(lane)+Vector3.UP*0.064))
+    _add_multimesh(root,"PermanentSkidWear",skid_mesh,skid_mat,skid_transforms)
+
+    # --- Distant forest wall: large low-detail conifers hide the map boundary.
+    var distant_mesh: CylinderMesh = CylinderMesh.new()
+    distant_mesh.top_radius = 0.0
+    distant_mesh.bottom_radius = 5.2
+    distant_mesh.height = 13.5
+    distant_mesh.radial_segments = 6
+    var distant_mat: StandardMaterial3D = _mat(Color(0.012,0.085,0.035),0.0,0.98)
+    var distant_transforms: Array[Transform3D] = []
+    for i in range(72):
+        var a: float = TAU*float(i)/72.0
+        var radial: float = 186.0+float(i%5)*8.0
+        var pos: Vector3 = Vector3(cos(a)*radial,6.0+float(i%3)*1.2,sin(a)*radial)
+        var scale_v: Vector3 = Vector3(1.0+float(i%4)*0.16,1.0+float((i+2)%3)*0.20,1.0)
+        distant_transforms.append(Transform3D(Basis(Vector3.UP,a).scaled(scale_v),pos))
+    _add_multimesh(root,"DistantForestLOD",distant_mesh,distant_mat,distant_transforms)
+
+    # --- Mountain/cliff silhouettes, low count.
+    var mountain_mat: StandardMaterial3D = _mat(Color(0.055,0.070,0.072),0.0,0.99)
+    for i in range(12):
+        var a: float = TAU*float(i)/12.0+0.11
+        var block: MeshInstance3D = MeshInstance3D.new()
+        var bm: BoxMesh = BoxMesh.new()
+        bm.size = Vector3(34.0+float(i%3)*8.0,22.0+float(i%4)*5.5,28.0+float((i+1)%3)*9.0)
+        block.mesh = bm
+        block.position = Vector3(cos(a)*(214.0+float(i%2)*18.0),10.0+float(i%3)*4.0,sin(a)*(214.0+float(i%2)*18.0))
+        block.rotation_degrees = Vector3(0,rad_to_deg(a)+float(i%3)*14.0,0)
+        block.material_override = mountain_mat
+        block.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+        root.add_child(block)
+
+    # --- Start/finish landmark arch: visual only, high clearance.
+    var sp: Vector3 = sample_points[0]
+    var st: Vector3 = sample_tangents[0].normalized()
+    var sr: Vector3 = Vector3(-st.z,0.0,st.x).normalized()
+    var arch_basis: Basis = Basis.looking_at(st,Vector3.UP)
+    var arch_dark: StandardMaterial3D = _mat(Color(0.035,0.040,0.050),0.68,0.24)
+    var arch_red: StandardMaterial3D = _mat(Color(0.72,0.018,0.018),0.72,0.18)
+    arch_red.emission_enabled = true
+    arch_red.emission = Color(0.28,0.006,0.006)
+    arch_red.emission_energy_multiplier = 1.3
+
+    for side in [-1.0,1.0]:
+        var post: MeshInstance3D = MeshInstance3D.new()
+        var pm: BoxMesh = BoxMesh.new()
+        pm.size = Vector3(0.85,7.6,0.85)
+        post.mesh = pm
+        post.position = sp+sr*float(side)*(road_width*0.5+2.0)+Vector3.UP*3.8
+        post.basis = arch_basis
+        post.material_override = arch_dark
+        root.add_child(post)
+
+    var beam: MeshInstance3D = MeshInstance3D.new()
+    var beam_mesh: BoxMesh = BoxMesh.new()
+    beam_mesh.size = Vector3(road_width+5.0,0.86,0.92)
+    beam.mesh = beam_mesh
+    beam.position = sp+Vector3.UP*7.1
+    beam.basis = arch_basis
+    beam.material_override = arch_dark
+    root.add_child(beam)
+
+    var board: MeshInstance3D = MeshInstance3D.new()
+    var board_mesh: BoxMesh = BoxMesh.new()
+    board_mesh.size = Vector3(road_width*0.62,1.35,0.20)
+    board.mesh = board_mesh
+    board.position = sp+Vector3.UP*6.25-st*0.50
+    board.basis = arch_basis
+    board.material_override = arch_red
+    root.add_child(board)
+
+    # --- Corner chevrons / speed cues. Sparse and emissive.
+    var chevron_mat: StandardMaterial3D = _mat(Color(0.95,0.30,0.055),0.30,0.22)
+    chevron_mat.emission_enabled = true
+    chevron_mat.emission = Color(0.36,0.055,0.008)
+    chevron_mat.emission_energy_multiplier = 1.25
+    for frac in [0.10,0.27,0.48,0.67,0.86]:
         var idx: int = int(float(n)*float(frac))
         var p: Vector3 = sample_points[idx]
-        var t: Vector3 = sample_tangents[idx].normalized()
-        var r: Vector3 = Vector3(-t.z,0.0,t.x).normalized()
-        var side: float = -1.0 if int(frac*100.0)%2==0 else 1.0
-        var center: Vector3 = p+r*side*(road_width*0.5+25.0)
-        _build_pagoda(root,center,-r*side,0.88,wall_mat,gold,roof,lantern)
+        var tangent: Vector3 = sample_tangents[idx].normalized()
+        var right: Vector3 = Vector3(-tangent.z,0.0,tangent.x).normalized()
+        for j in range(3):
+            var sign: MeshInstance3D = MeshInstance3D.new()
+            var sm: BoxMesh = BoxMesh.new()
+            sm.size = Vector3(1.25,0.72,0.10)
+            sign.mesh = sm
+            sign.position = p+right*(road_width*0.5+2.2)+tangent*(float(j)-1.0)*2.4+Vector3.UP*1.05
+            sign.basis = Basis.looking_at(-right,Vector3.UP)
+            sign.material_override = chevron_mat
+            root.add_child(sign)
 
-    # High-clearance temple gates: visual landmarks only, no extra collision or ramps.
-    for frac in [0.0,0.52]:
-        var idx: int = int(float(n)*float(frac))%n
-        _build_temple_gate(root,sample_points[idx],sample_tangents[idx].normalized(),0.92,red,roof,gold)
-
-    # Golden dragon statue at the waterfall-side landmark.
-    var dragon_idx: int = int(float(n)*0.70)
-    var dp: Vector3 = sample_points[dragon_idx]
-    var dt: Vector3 = sample_tangents[dragon_idx].normalized()
-    var dr: Vector3 = Vector3(-dt.z,0.0,dt.x).normalized()
-    _build_dragon_statue(root,dp-dr*(road_width*0.5+30.0),1.05,gold,rock)
-
-    # A few real lights sell the night scene without flooding the GPU.
-    for frac in [0.0,0.18,0.38,0.58,0.78]:
-        var idx: int = int(float(n)*float(frac))%n
+    # --- Only four real lights across the whole map to protect FPS.
+    var warm: Color = Color(1.0,0.46,0.18)
+    for frac in [0.02,0.31,0.58,0.81]:
+        var idx: int = int(float(n)*float(frac))
         var p: Vector3 = sample_points[idx]
-        var t: Vector3 = sample_tangents[idx].normalized()
-        var r: Vector3 = Vector3(-t.z,0.0,t.x).normalized()
+        var tangent: Vector3 = sample_tangents[idx].normalized()
+        var right: Vector3 = Vector3(-tangent.z,0.0,tangent.x).normalized()
         var light: OmniLight3D = OmniLight3D.new()
-        light.position = p+r*(road_width*0.5+4.0)+Vector3.UP*4.5
-        light.light_color = Color(1.0,0.56,0.22)
-        light.light_energy = 2.8
-        light.omni_range = 18.0
+        light.position = p+right*(road_width*0.5+5.0)+Vector3.UP*4.2
+        light.light_color = warm
+        light.light_energy = 1.45
+        light.omni_range = 15.0
+        light.shadow_enabled = false
         root.add_child(light)
 
 func _build_checkpoints() -> void:
