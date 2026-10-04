@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/auto_race_track_3d.gd" id="1_auto"]
+
+[sub_resource type="Curve3D" id="Curve3D_auto"]
+
+[node name="AutoTrackTemplate" type="Path3D"]
+curve = SubResource("Curve3D_auto")
+script = ExtResource("1_auto")
+road_width = 12.0
+sample_distance = 0.7
+guardrail_height = 0.95
+guardrail_edge_gap = 0.35
+generate_collision = true
+live_rebuild = true
