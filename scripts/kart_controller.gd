@@ -350,21 +350,27 @@ func _gold_add_quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vect
     _gold_add_tri(st,a,c,d)
 
 func _gold_body_mesh() -> ArrayMesh:
-    # Full-bodied GT/prototype shell: the wheelbase and cockpit are visually
-    # enclosed by one continuous aerodynamic surface instead of an exposed kart frame.
+    # v47: denser prototype-hypercar body with smoother connected curvature.
+    # Visual geometry only; collision and driving values are untouched.
     var stations: Array[Dictionary] = [
-        {"z":-2.34,"w":0.12,"floor":0.16,"low":0.20,"shoulder":0.26,"deck":0.31},
-        {"z":-2.08,"w":0.42,"floor":0.15,"low":0.23,"shoulder":0.34,"deck":0.40},
-        {"z":-1.76,"w":0.90,"floor":0.15,"low":0.28,"shoulder":0.44,"deck":0.51},
-        {"z":-1.38,"w":1.34,"floor":0.15,"low":0.32,"shoulder":0.52,"deck":0.59},
-        {"z":-1.04,"w":1.46,"floor":0.15,"low":0.34,"shoulder":0.56,"deck":0.64},
-        {"z":-0.58,"w":1.30,"floor":0.15,"low":0.35,"shoulder":0.59,"deck":0.69},
-        {"z":-0.12,"w":1.24,"floor":0.15,"low":0.36,"shoulder":0.61,"deck":0.73},
-        {"z":0.38,"w":1.29,"floor":0.15,"low":0.37,"shoulder":0.60,"deck":0.72},
-        {"z":0.82,"w":1.42,"floor":0.15,"low":0.36,"shoulder":0.57,"deck":0.66},
-        {"z":1.18,"w":1.48,"floor":0.16,"low":0.35,"shoulder":0.53,"deck":0.60},
-        {"z":1.48,"w":1.30,"floor":0.17,"low":0.32,"shoulder":0.46,"deck":0.52},
-        {"z":1.70,"w":1.05,"floor":0.18,"low":0.28,"shoulder":0.38,"deck":0.43}
+        {"z":-2.50,"w":0.07,"floor":0.145,"sill":0.17,"side":0.19,"shoulder":0.22,"deck":0.25,"crown":0.28},
+        {"z":-2.34,"w":0.22,"floor":0.145,"sill":0.18,"side":0.22,"shoulder":0.27,"deck":0.31,"crown":0.34},
+        {"z":-2.12,"w":0.50,"floor":0.145,"sill":0.20,"side":0.27,"shoulder":0.34,"deck":0.39,"crown":0.42},
+        {"z":-1.88,"w":0.86,"floor":0.145,"sill":0.23,"side":0.34,"shoulder":0.43,"deck":0.48,"crown":0.51},
+        {"z":-1.62,"w":1.18,"floor":0.145,"sill":0.26,"side":0.40,"shoulder":0.50,"deck":0.55,"crown":0.58},
+        {"z":-1.38,"w":1.44,"floor":0.145,"sill":0.28,"side":0.44,"shoulder":0.54,"deck":0.59,"crown":0.62},
+        {"z":-1.12,"w":1.50,"floor":0.145,"sill":0.29,"side":0.46,"shoulder":0.57,"deck":0.62,"crown":0.65},
+        {"z":-0.82,"w":1.40,"floor":0.145,"sill":0.30,"side":0.48,"shoulder":0.60,"deck":0.66,"crown":0.69},
+        {"z":-0.48,"w":1.28,"floor":0.145,"sill":0.30,"side":0.49,"shoulder":0.62,"deck":0.69,"crown":0.72},
+        {"z":-0.12,"w":1.24,"floor":0.145,"sill":0.31,"side":0.50,"shoulder":0.63,"deck":0.70,"crown":0.74},
+        {"z":0.24,"w":1.26,"floor":0.145,"sill":0.31,"side":0.50,"shoulder":0.63,"deck":0.70,"crown":0.74},
+        {"z":0.58,"w":1.34,"floor":0.145,"sill":0.31,"side":0.49,"shoulder":0.61,"deck":0.68,"crown":0.71},
+        {"z":0.88,"w":1.46,"floor":0.15,"sill":0.31,"side":0.47,"shoulder":0.58,"deck":0.64,"crown":0.67},
+        {"z":1.12,"w":1.52,"floor":0.15,"sill":0.30,"side":0.44,"shoulder":0.55,"deck":0.60,"crown":0.63},
+        {"z":1.34,"w":1.49,"floor":0.155,"sill":0.29,"side":0.41,"shoulder":0.51,"deck":0.56,"crown":0.59},
+        {"z":1.54,"w":1.36,"floor":0.16,"sill":0.27,"side":0.37,"shoulder":0.46,"deck":0.51,"crown":0.54},
+        {"z":1.72,"w":1.15,"floor":0.17,"sill":0.24,"side":0.32,"shoulder":0.40,"deck":0.45,"crown":0.48},
+        {"z":1.84,"w":0.91,"floor":0.18,"sill":0.22,"side":0.28,"shoulder":0.34,"deck":0.39,"crown":0.42}
     ]
 
     var rings: Array = []
@@ -372,25 +378,31 @@ func _gold_body_mesh() -> ArrayMesh:
         var z: float = float(d["z"])
         var w: float = float(d["w"])
         var floor_y: float = float(d["floor"])
-        var low_y: float = float(d["low"])
+        var sill_y: float = float(d["sill"])
+        var side_y: float = float(d["side"])
         var shoulder_y: float = float(d["shoulder"])
         var deck_y: float = float(d["deck"])
+        var crown_y: float = float(d["crown"])
 
-        # 12-point section gives a much smoother, rounded full-body silhouette.
+        # 17-point section creates smooth fender shoulders, deck curvature and a center spine.
         var ring: Array[Vector3] = [
-            Vector3(-w*0.78,floor_y,z),
-            Vector3(-w*0.98,low_y,z),
-            Vector3(-w,shoulder_y*0.82,z),
-            Vector3(-w*0.86,shoulder_y,z),
-            Vector3(-w*0.60,deck_y*0.98,z),
-            Vector3(-w*0.28,deck_y*1.035,z),
-            Vector3(0.0,deck_y*1.055,z),
-            Vector3(w*0.28,deck_y*1.035,z),
-            Vector3(w*0.60,deck_y*0.98,z),
-            Vector3(w*0.86,shoulder_y,z),
-            Vector3(w,shoulder_y*0.82,z),
-            Vector3(w*0.98,low_y,z),
-            Vector3(w*0.78,floor_y,z)
+            Vector3(-w*0.70,floor_y,z),
+            Vector3(-w*0.90,sill_y,z),
+            Vector3(-w*0.995,side_y,z),
+            Vector3(-w*0.98,lerp(side_y,shoulder_y,0.55),z),
+            Vector3(-w*0.90,shoulder_y,z),
+            Vector3(-w*0.72,lerp(shoulder_y,deck_y,0.68),z),
+            Vector3(-w*0.52,deck_y,z),
+            Vector3(-w*0.27,lerp(deck_y,crown_y,0.82),z),
+            Vector3(0.0,crown_y,z),
+            Vector3(w*0.27,lerp(deck_y,crown_y,0.82),z),
+            Vector3(w*0.52,deck_y,z),
+            Vector3(w*0.72,lerp(shoulder_y,deck_y,0.68),z),
+            Vector3(w*0.90,shoulder_y,z),
+            Vector3(w*0.98,lerp(side_y,shoulder_y,0.55),z),
+            Vector3(w*0.995,side_y,z),
+            Vector3(w*0.90,sill_y,z),
+            Vector3(w*0.70,floor_y,z)
         ]
         rings.append(ring)
 
@@ -402,8 +414,6 @@ func _gold_body_mesh() -> ArrayMesh:
         var b: Array = rings[i+1]
         for j in range(a.size()-1):
             _gold_add_quad(st,a[j],b[j],b[j+1],a[j+1])
-
-        # Close the flat underbody.
         _gold_add_quad(st,a[a.size()-1],b[b.size()-1],b[0],a[0])
 
     var first: Array = rings[0]
@@ -419,14 +429,17 @@ func _gold_body_mesh() -> ArrayMesh:
     return st.commit()
 
 func _gold_canopy_mesh() -> ArrayMesh:
-    # Low cockpit canopy integrated into the body instead of an exposed seat.
+    # Longer and lower cockpit glass, blended into the center of the body.
     var stations: Array[Dictionary] = [
-        {"z":-0.78,"w":0.30,"base":0.64,"top":0.70},
-        {"z":-0.48,"w":0.52,"base":0.65,"top":0.83},
-        {"z":-0.10,"w":0.62,"base":0.66,"top":0.95},
-        {"z":0.28,"w":0.60,"base":0.65,"top":0.94},
-        {"z":0.62,"w":0.48,"base":0.63,"top":0.83},
-        {"z":0.84,"w":0.26,"base":0.60,"top":0.68}
+        {"z":-0.92,"w":0.16,"base":0.64,"top":0.67},
+        {"z":-0.70,"w":0.34,"base":0.65,"top":0.74},
+        {"z":-0.44,"w":0.50,"base":0.66,"top":0.84},
+        {"z":-0.16,"w":0.59,"base":0.67,"top":0.93},
+        {"z":0.10,"w":0.62,"base":0.67,"top":0.96},
+        {"z":0.36,"w":0.60,"base":0.66,"top":0.94},
+        {"z":0.60,"w":0.53,"base":0.64,"top":0.86},
+        {"z":0.80,"w":0.40,"base":0.62,"top":0.76},
+        {"z":0.96,"w":0.22,"base":0.59,"top":0.65}
     ]
 
     var rings: Array = []
@@ -437,11 +450,13 @@ func _gold_canopy_mesh() -> ArrayMesh:
         var top: float = float(d["top"])
         var ring: Array[Vector3] = [
             Vector3(-w,base,z),
-            Vector3(-w*0.82,lerp(base,top,0.50),z),
-            Vector3(-w*0.44,lerp(base,top,0.88),z),
+            Vector3(-w*0.88,lerp(base,top,0.38),z),
+            Vector3(-w*0.68,lerp(base,top,0.68),z),
+            Vector3(-w*0.40,lerp(base,top,0.90),z),
             Vector3(0.0,top,z),
-            Vector3(w*0.44,lerp(base,top,0.88),z),
-            Vector3(w*0.82,lerp(base,top,0.50),z),
+            Vector3(w*0.40,lerp(base,top,0.90),z),
+            Vector3(w*0.68,lerp(base,top,0.68),z),
+            Vector3(w*0.88,lerp(base,top,0.38),z),
             Vector3(w,base,z)
         ]
         rings.append(ring)
@@ -460,24 +475,23 @@ func _gold_canopy_mesh() -> ArrayMesh:
     return st.commit()
 
 func _gold_fender_mesh(radius: float, length: float, side_sign: float) -> ArrayMesh:
-    # Rounded upper wheel housing, not a box. The tire stays visible but the
-    # mechanical frame is hidden under a proper full-body fender.
+    # Higher-resolution arch shell for cleaner wheel-to-body integration.
     var st: SurfaceTool = SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
     var rings: Array = []
-    var ring_count: int = 7
-    var arch_count: int = 10
+    var ring_count: int = 9
+    var arch_count: int = 14
 
     for zi in range(ring_count):
         var tz: float = float(zi)/float(ring_count-1)
         var z: float = lerp(-length*0.5,length*0.5,tz)
-        var taper: float = 1.0-abs(tz-0.5)*0.22
+        var taper: float = 0.88+sin(tz*PI)*0.12
         var ring: Array[Vector3] = []
         for ai in range(arch_count):
             var ta: float = float(ai)/float(arch_count-1)
-            var angle: float = lerp(-0.18,PI+0.18,ta)
+            var angle: float = lerp(-0.14,PI+0.14,ta)
             var x: float = cos(angle)*radius*taper
-            var y: float = sin(angle)*radius*0.63 + 0.40
+            var y: float = sin(angle)*radius*0.60+0.39
             ring.append(Vector3(x*side_sign,y,z))
         rings.append(ring)
 
@@ -557,44 +571,54 @@ func _gold_led_bar(root: Node3D, pos: Vector3, size: Vector3, rot: Vector3, mat:
     root.add_child(led)
 
 func _build_gold_foundation(root: Node3D, body_mat: StandardMaterial3D, dark: StandardMaterial3D) -> void:
-    # Full-body black carbon shell. No exposed frame or oversized seat.
-    body_mat.albedo_color = Color(0.007,0.010,0.016)
-    body_mat.metallic = 0.94
-    body_mat.roughness = 0.085
+    # Premium full-body shell: deep carbon-black paint, integrated glass and detailed wheels.
+    body_mat.albedo_color = Color(0.0055,0.008,0.013)
+    body_mat.metallic = 0.93
+    body_mat.roughness = 0.075
 
-    dark.albedo_color = Color(0.002,0.004,0.008)
-    dark.metallic = 0.78
-    dark.roughness = 0.10
+    dark.albedo_color = Color(0.0015,0.003,0.006)
+    dark.metallic = 0.84
+    dark.roughness = 0.075
 
     var chassis: MeshInstance3D = MeshInstance3D.new()
-    chassis.name = "GoldDragonFullBodyShell"
+    chassis.name = "GoldDragonV47HyperBody"
     chassis.mesh = _gold_body_mesh()
     chassis.material_override = body_mat
     root.add_child(chassis)
 
     var canopy: MeshInstance3D = MeshInstance3D.new()
-    canopy.name = "IntegratedCockpitCanopy"
+    canopy.name = "LowIntegratedCanopy"
     canopy.mesh = _gold_canopy_mesh()
     canopy.material_override = dark
     root.add_child(canopy)
 
     var tire_mat: StandardMaterial3D = StandardMaterial3D.new()
-    tire_mat.albedo_color = Color(0.006,0.007,0.009)
-    tire_mat.metallic = 0.05
-    tire_mat.roughness = 0.80
+    tire_mat.albedo_color = Color(0.004,0.005,0.007)
+    tire_mat.metallic = 0.03
+    tire_mat.roughness = 0.86
 
     var rim_gold: StandardMaterial3D = StandardMaterial3D.new()
-    rim_gold.albedo_color = Color(0.93,0.63,0.08)
+    rim_gold.albedo_color = Color(0.94,0.64,0.075)
     rim_gold.metallic = 0.99
-    rim_gold.roughness = 0.06
+    rim_gold.roughness = 0.055
     rim_gold.emission_enabled = true
-    rim_gold.emission = Color(0.62,0.20,0.008)
-    rim_gold.emission_energy_multiplier = 2.1
+    rim_gold.emission = Color(0.18,0.05,0.001)
+    rim_gold.emission_energy_multiplier = 0.70
 
     var rim_dark: StandardMaterial3D = StandardMaterial3D.new()
-    rim_dark.albedo_color = Color(0.015,0.018,0.024)
-    rim_dark.metallic = 0.92
-    rim_dark.roughness = 0.11
+    rim_dark.albedo_color = Color(0.010,0.013,0.019)
+    rim_dark.metallic = 0.94
+    rim_dark.roughness = 0.10
+
+    var brake_mat: StandardMaterial3D = StandardMaterial3D.new()
+    brake_mat.albedo_color = Color(0.13,0.14,0.16)
+    brake_mat.metallic = 0.96
+    brake_mat.roughness = 0.24
+
+    var caliper_mat: StandardMaterial3D = StandardMaterial3D.new()
+    caliper_mat.albedo_color = Color(0.88,0.50,0.055)
+    caliper_mat.metallic = 0.91
+    caliper_mat.roughness = 0.12
 
     var wheel_data: Array[Dictionary] = [
         {"x":-1.22,"z":-1.34,"r":0.50,"w":0.38},
@@ -608,278 +632,409 @@ func _build_gold_foundation(root: Node3D, body_mat: StandardMaterial3D, dark: St
         var z: float = float(wd["z"])
         var r: float = float(wd["r"])
         var w: float = float(wd["w"])
+        var outer_x: float = x+(0.020 if x>0.0 else -0.020)
 
         var tire: MeshInstance3D = MeshInstance3D.new()
         var tm: CylinderMesh = CylinderMesh.new()
         tm.top_radius = r
         tm.bottom_radius = r
         tm.height = w
-        tm.radial_segments = 32
+        tm.radial_segments = 36
         tire.mesh = tm
         tire.rotation_degrees.z = 90.0
         tire.position = Vector3(x,0.48,z)
         tire.material_override = tire_mat
         root.add_child(tire)
 
+        # Thin gold outer rim.
         var rim: MeshInstance3D = MeshInstance3D.new()
         var rm: CylinderMesh = CylinderMesh.new()
-        rm.top_radius = r*0.62
-        rm.bottom_radius = r*0.62
-        rm.height = w+0.022
-        rm.radial_segments = 32
+        rm.top_radius = r*0.65
+        rm.bottom_radius = r*0.65
+        rm.height = w+0.026
+        rm.radial_segments = 36
         rim.mesh = rm
         rim.rotation_degrees.z = 90.0
-        rim.position = Vector3(x+(0.014 if x>0.0 else -0.014),0.48,z)
+        rim.position = Vector3(outer_x,0.48,z)
         rim.material_override = rim_gold
         root.add_child(rim)
 
+        # Dark inner barrel creates depth behind the spokes.
+        var barrel: MeshInstance3D = MeshInstance3D.new()
+        var bm: CylinderMesh = CylinderMesh.new()
+        bm.top_radius = r*0.54
+        bm.bottom_radius = r*0.54
+        bm.height = w+0.038
+        bm.radial_segments = 30
+        barrel.mesh = bm
+        barrel.rotation_degrees.z = 90.0
+        barrel.position = Vector3(outer_x+(0.006 if x>0.0 else -0.006),0.48,z)
+        barrel.material_override = rim_dark
+        root.add_child(barrel)
+
+        # Brake disc.
+        var disc: MeshInstance3D = MeshInstance3D.new()
+        var dm: CylinderMesh = CylinderMesh.new()
+        dm.top_radius = r*0.39
+        dm.bottom_radius = r*0.39
+        dm.height = w+0.048
+        dm.radial_segments = 28
+        disc.mesh = dm
+        disc.rotation_degrees.z = 90.0
+        disc.position = Vector3(outer_x+(0.012 if x>0.0 else -0.012),0.48,z)
+        disc.material_override = brake_mat
+        root.add_child(disc)
+
+        # Eight slim metallic spokes.
+        for angle in range(0,360,45):
+            var spoke: MeshInstance3D = MeshInstance3D.new()
+            var spoke_mesh: BoxMesh = BoxMesh.new()
+            spoke_mesh.size = Vector3(0.040,r*0.105,r*0.92)
+            spoke.mesh = spoke_mesh
+            spoke.position = Vector3(outer_x+(0.020 if x>0.0 else -0.020),0.48,z)
+            spoke.rotation_degrees.x = float(angle)
+            spoke.material_override = rim_gold
+            root.add_child(spoke)
+
         var hub: MeshInstance3D = MeshInstance3D.new()
         var hm: CylinderMesh = CylinderMesh.new()
-        hm.top_radius = r*0.30
-        hm.bottom_radius = r*0.30
-        hm.height = w+0.032
-        hm.radial_segments = 24
+        hm.top_radius = r*0.17
+        hm.bottom_radius = r*0.17
+        hm.height = w+0.060
+        hm.radial_segments = 20
         hub.mesh = hm
         hub.rotation_degrees.z = 90.0
-        hub.position = Vector3(x+(0.019 if x>0.0 else -0.019),0.48,z)
-        hub.material_override = rim_dark
+        hub.position = Vector3(outer_x+(0.028 if x>0.0 else -0.028),0.48,z)
+        hub.material_override = rim_gold
         root.add_child(hub)
 
-        # Rounded fender shell visually integrates each wheel into the full body.
+        var caliper: MeshInstance3D = MeshInstance3D.new()
+        var caliper_mesh: BoxMesh = BoxMesh.new()
+        caliper_mesh.size = Vector3(0.055,r*0.28,r*0.12)
+        caliper.mesh = caliper_mesh
+        caliper.position = Vector3(outer_x+(0.034 if x>0.0 else -0.034),0.48+r*0.24,z+r*0.08)
+        caliper.material_override = caliper_mat
+        root.add_child(caliper)
+
+        # Rounded fender shoulder hides the old exposed-kart silhouette.
         var fender: MeshInstance3D = MeshInstance3D.new()
-        fender.mesh = _gold_fender_mesh(r*1.07,w*2.05,1.0 if x>0.0 else -1.0)
-        fender.position = Vector3(x*0.82,0.16,z)
+        fender.mesh = _gold_fender_mesh(r*1.08,w*2.15,1.0 if x>0.0 else -1.0)
+        fender.position = Vector3(x*0.79,0.16,z)
         fender.material_override = body_mat
         root.add_child(fender)
 
+    # Gold canopy perimeter: thin trim makes the glass look intentionally inset.
+    var canopy_trim_mat: StandardMaterial3D = StandardMaterial3D.new()
+    canopy_trim_mat.albedo_color = Color(0.88,0.56,0.055)
+    canopy_trim_mat.metallic = 0.99
+    canopy_trim_mat.roughness = 0.06
+
+    for side in [-1.0,1.0]:
+        var sgn: float = float(side)
+        var trim_points: Array[Vector3] = [
+            Vector3(sgn*0.18,0.69,-0.84),
+            Vector3(sgn*0.43,0.77,-0.56),
+            Vector3(sgn*0.56,0.89,-0.20),
+            Vector3(sgn*0.56,0.90,0.28),
+            Vector3(sgn*0.43,0.78,0.66),
+            Vector3(sgn*0.20,0.66,0.88)
+        ]
+        var trim: MeshInstance3D = MeshInstance3D.new()
+        trim.mesh = _gold_ribbon_mesh(trim_points,0.020,Vector3.UP)
+        trim.material_override = canopy_trim_mat
+        root.add_child(trim)
+
 func _build_gold_hypercar(root: Node3D) -> void:
     var carbon: StandardMaterial3D = StandardMaterial3D.new()
-    carbon.albedo_color = Color(0.007,0.009,0.014)
-    carbon.metallic = 0.96
-    carbon.roughness = 0.075
+    carbon.albedo_color = Color(0.0045,0.0065,0.011)
+    carbon.metallic = 0.95
+    carbon.roughness = 0.070
+
+    var carbon_soft: StandardMaterial3D = StandardMaterial3D.new()
+    carbon_soft.albedo_color = Color(0.017,0.020,0.027)
+    carbon_soft.metallic = 0.88
+    carbon_soft.roughness = 0.12
 
     var gold: StandardMaterial3D = StandardMaterial3D.new()
-    gold.albedo_color = Color(0.98,0.69,0.09)
+    gold.albedo_color = Color(0.97,0.67,0.075)
     gold.metallic = 0.99
-    gold.roughness = 0.055
+    gold.roughness = 0.052
     gold.emission_enabled = true
-    gold.emission = Color(0.31,0.10,0.005)
-    gold.emission_energy_multiplier = 1.20
+    gold.emission = Color(0.09,0.025,0.001)
+    gold.emission_energy_multiplier = 0.55
 
     var led: StandardMaterial3D = StandardMaterial3D.new()
-    led.albedo_color = Color(1.0,0.78,0.18)
-    led.metallic = 0.72
-    led.roughness = 0.035
+    led.albedo_color = Color(1.0,0.88,0.34)
+    led.metallic = 0.62
+    led.roughness = 0.028
     led.emission_enabled = true
-    led.emission = Color(1.0,0.38,0.008)
-    led.emission_energy_multiplier = 4.2
+    led.emission = Color(1.0,0.58,0.045)
+    led.emission_energy_multiplier = 4.6
 
     var red_led: StandardMaterial3D = StandardMaterial3D.new()
-    red_led.albedo_color = Color(1.0,0.055,0.018)
+    red_led.albedo_color = Color(1.0,0.045,0.012)
     red_led.emission_enabled = true
-    red_led.emission = Color(1.0,0.012,0.003)
-    red_led.emission_energy_multiplier = 4.2
+    red_led.emission = Color(1.0,0.010,0.002)
+    red_led.emission_energy_multiplier = 4.0
 
-    # V-shaped nose fins hug the body instead of looking like a board stuck on front.
+    # Layered V nose and splitter, shaped as separate aero surfaces.
     for side in [-1.0,1.0]:
         var s: float = float(side)
 
-        var nose_fin: MeshInstance3D = MeshInstance3D.new()
-        nose_fin.mesh = _gold_wing_mesh(0.56,1.48,0.11,0.24)
-        nose_fin.position = Vector3(s*0.27,0.30,-2.08)
-        nose_fin.rotation_degrees = Vector3(7.0,s*8.0,s*4.0)
-        nose_fin.material_override = carbon
-        root.add_child(nose_fin)
+        var upper_nose: MeshInstance3D = MeshInstance3D.new()
+        upper_nose.mesh = _gold_wing_mesh(0.50,1.42,0.085,0.20)
+        upper_nose.position = Vector3(s*0.28,0.30,-2.08)
+        upper_nose.rotation_degrees = Vector3(6.0,s*8.0,s*3.5)
+        upper_nose.material_override = carbon
+        root.add_child(upper_nose)
 
-        var front_wing: MeshInstance3D = MeshInstance3D.new()
-        front_wing.mesh = _gold_wing_mesh(1.15,0.68,0.085,0.22)
-        front_wing.position = Vector3(s*0.78,0.18,-2.38)
-        front_wing.rotation_degrees = Vector3(0.0,s*12.0,s*-3.0)
-        front_wing.material_override = carbon
-        root.add_child(front_wing)
+        var lower_splitter: MeshInstance3D = MeshInstance3D.new()
+        lower_splitter.mesh = _gold_wing_mesh(1.12,0.58,0.055,0.18)
+        lower_splitter.position = Vector3(s*0.76,0.155,-2.42)
+        lower_splitter.rotation_degrees = Vector3(0.0,s*10.0,s*-2.0)
+        lower_splitter.material_override = carbon_soft
+        root.add_child(lower_splitter)
 
-        var wing_edge: MeshInstance3D = MeshInstance3D.new()
-        wing_edge.mesh = _gold_wing_mesh(0.96,0.10,0.038,0.16)
-        wing_edge.position = Vector3(s*0.82,0.23,-2.62)
-        wing_edge.rotation_degrees = Vector3(0.0,s*12.0,0.0)
-        wing_edge.material_override = led
-        root.add_child(wing_edge)
+        var gold_splitter_edge: MeshInstance3D = MeshInstance3D.new()
+        gold_splitter_edge.mesh = _gold_wing_mesh(0.98,0.075,0.028,0.15)
+        gold_splitter_edge.position = Vector3(s*0.80,0.195,-2.63)
+        gold_splitter_edge.rotation_degrees = Vector3(0.0,s*10.0,0.0)
+        gold_splitter_edge.material_override = gold
+        root.add_child(gold_splitter_edge)
 
-        # Gold side skirt is flush with the body shell.
+        # Deep front brake/air intake mouth.
+        var front_intake: MeshInstance3D = MeshInstance3D.new()
+        front_intake.mesh = _gold_wing_mesh(0.42,0.46,0.055,0.06)
+        front_intake.position = Vector3(s*0.88,0.35,-1.78)
+        front_intake.rotation_degrees = Vector3(8.0,s*7.0,s*5.0)
+        front_intake.material_override = carbon_soft
+        root.add_child(front_intake)
+
+        # Sculpted side intake and lower gold sill.
+        var side_intake: MeshInstance3D = MeshInstance3D.new()
+        side_intake.mesh = _gold_wing_mesh(0.34,0.88,0.085,0.09)
+        side_intake.position = Vector3(s*1.12,0.43,-0.20)
+        side_intake.rotation_degrees = Vector3(0.0,s*3.0,s*9.0)
+        side_intake.material_override = carbon_soft
+        root.add_child(side_intake)
+
         var side_skirt: MeshInstance3D = MeshInstance3D.new()
-        side_skirt.mesh = _gold_wing_mesh(0.18,2.10,0.055,0.02)
-        side_skirt.position = Vector3(s*1.15,0.20,-0.05)
+        side_skirt.mesh = _gold_wing_mesh(0.16,2.22,0.050,0.02)
+        side_skirt.position = Vector3(s*1.17,0.19,-0.04)
         side_skirt.material_override = gold
         root.add_child(side_skirt)
 
-        _gold_led_bar(root,Vector3(s*1.18,0.30,-0.06),Vector3(0.035,0.045,1.88),Vector3.ZERO,led)
+        # Two-piece jewel-like headlight inside the front shoulder.
+        _gold_led_bar(root,Vector3(s*0.50,0.51,-1.78),Vector3(0.43,0.030,0.060),Vector3(0.0,s*-13.0,s*5.0),led)
+        _gold_led_bar(root,Vector3(s*0.67,0.47,-1.68),Vector3(0.24,0.024,0.050),Vector3(0.0,s*-22.0,s*9.0),led)
 
-    # Thin supercar-like headlights.
+        # Subtle side illumination only at the lower sill.
+        _gold_led_bar(root,Vector3(s*1.185,0.285,-0.02),Vector3(0.026,0.032,1.65),Vector3.ZERO,led)
+
+    # Hood center spine and twin dark aero channels.
+    _gold_led_bar(root,Vector3(0.0,0.535,-1.92),Vector3(0.040,0.026,0.88),Vector3(8.0,0.0,0.0),gold)
+
     for side in [-1.0,1.0]:
-        var s: float = float(side)
-        _gold_led_bar(
-            root,
-            Vector3(s*0.48,0.51,-1.72),
-            Vector3(0.46,0.038,0.075),
-            Vector3(0.0,s*-12.0,s*4.0),
-            led
-        )
+        var channel: MeshInstance3D = MeshInstance3D.new()
+        channel.mesh = _gold_wing_mesh(0.14,1.12,0.020,0.02)
+        channel.position = Vector3(float(side)*0.34,0.565,-1.18)
+        channel.rotation_degrees = Vector3(4.0,float(side)*-2.0,0.0)
+        channel.material_override = carbon_soft
+        root.add_child(channel)
 
-    # Hood spine / nose outline.
-    _gold_led_bar(root,Vector3(0.0,0.54,-1.88),Vector3(0.055,0.035,0.92),Vector3(9.0,0.0,0.0),gold)
+    # Rear engine cover spine.
+    var engine_spine: MeshInstance3D = MeshInstance3D.new()
+    engine_spine.mesh = _gold_wing_mesh(0.58,0.86,0.10,0.06)
+    engine_spine.position = Vector3(0.0,0.72,0.96)
+    engine_spine.rotation_degrees.x = -2.0
+    engine_spine.material_override = carbon
+    root.add_child(engine_spine)
 
-    # Wide, low racing rear wing.
+    # Three slotted vents per side over the rear shoulders.
+    for side in [-1.0,1.0]:
+        for i in range(3):
+            var vent: MeshInstance3D = MeshInstance3D.new()
+            vent.mesh = _gold_wing_mesh(0.26,0.36,0.018,0.03)
+            vent.position = Vector3(float(side)*(0.54+float(i)*0.12),0.655-float(i)*0.018,0.86+float(i)*0.12)
+            vent.rotation_degrees = Vector3(-5.0,float(side)*6.0,float(side)*4.0)
+            vent.material_override = carbon_soft
+            root.add_child(vent)
+
+    # Two-element rear wing with end plates.
     var rear_wing: MeshInstance3D = MeshInstance3D.new()
-    rear_wing.mesh = _gold_wing_mesh(2.62,0.62,0.095,0.16)
-    rear_wing.position = Vector3(0.0,1.20,1.45)
-    rear_wing.rotation_degrees.x = -5.0
+    rear_wing.mesh = _gold_wing_mesh(2.68,0.58,0.085,0.15)
+    rear_wing.position = Vector3(0.0,1.17,1.46)
+    rear_wing.rotation_degrees.x = -5.5
     rear_wing.material_override = carbon
     root.add_child(rear_wing)
 
-    var rear_edge: MeshInstance3D = MeshInstance3D.new()
-    rear_edge.mesh = _gold_wing_mesh(2.46,0.09,0.040,0.11)
-    rear_edge.position = Vector3(0.0,1.25,1.68)
-    rear_edge.material_override = gold
-    root.add_child(rear_edge)
-
-    _gold_led_bar(root,Vector3(0.0,1.27,1.70),Vector3(2.20,0.035,0.045),Vector3.ZERO,led)
+    var rear_flap: MeshInstance3D = MeshInstance3D.new()
+    rear_flap.mesh = _gold_wing_mesh(2.50,0.24,0.048,0.11)
+    rear_flap.position = Vector3(0.0,1.29,1.64)
+    rear_flap.rotation_degrees.x = -9.0
+    rear_flap.material_override = gold
+    root.add_child(rear_flap)
 
     for side in [-1.0,1.0]:
+        var endplate: MeshInstance3D = MeshInstance3D.new()
+        var epm: BoxMesh = BoxMesh.new()
+        epm.size = Vector3(0.050,0.46,0.58)
+        endplate.mesh = epm
+        endplate.position = Vector3(float(side)*1.31,1.17,1.48)
+        endplate.rotation_degrees.z = float(side)*-4.0
+        endplate.material_override = carbon_soft
+        root.add_child(endplate)
+
         var support: MeshInstance3D = MeshInstance3D.new()
-        support.mesh = _gold_wing_mesh(0.13,0.70,0.085,0.015)
-        support.position = Vector3(float(side)*0.70,0.88,1.34)
+        support.mesh = _gold_wing_mesh(0.12,0.70,0.075,0.015)
+        support.position = Vector3(float(side)*0.71,0.87,1.34)
         support.material_override = gold
         root.add_child(support)
 
-    # Proper rear diffuser and twin exhausts.
-    for x in [-0.68,-0.34,0.0,0.34,0.68]:
+    _gold_led_bar(root,Vector3(0.0,1.30,1.68),Vector3(2.26,0.028,0.040),Vector3.ZERO,led)
+
+    # Aggressive rear diffuser with more believable central tunnel.
+    for x in [-0.72,-0.48,-0.24,0.0,0.24,0.48,0.72]:
         var fin: MeshInstance3D = MeshInstance3D.new()
-        fin.mesh = _gold_wing_mesh(0.075,0.66,0.20,0.018)
-        fin.position = Vector3(float(x),0.18,1.54)
-        fin.rotation_degrees.x = -6.0
-        fin.material_override = carbon
+        fin.mesh = _gold_wing_mesh(0.060,0.72,0.22,0.018)
+        fin.position = Vector3(float(x),0.17,1.55)
+        fin.rotation_degrees.x = -7.0
+        fin.material_override = carbon_soft
         root.add_child(fin)
 
+    # Exhausts.
     for x in [-0.40,0.40]:
         var exhaust: MeshInstance3D = MeshInstance3D.new()
         var em: CylinderMesh = CylinderMesh.new()
-        em.top_radius = 0.17
-        em.bottom_radius = 0.20
+        em.top_radius = 0.16
+        em.bottom_radius = 0.19
         em.height = 0.18
-        em.radial_segments = 24
+        em.radial_segments = 28
         exhaust.mesh = em
-        exhaust.position = Vector3(float(x),0.45,1.70)
+        exhaust.position = Vector3(float(x),0.45,1.72)
         exhaust.rotation_degrees.x = 90.0
         exhaust.material_override = gold
         root.add_child(exhaust)
 
-    # Low angular taillights.
+    # Blade taillights.
     for side in [-1.0,1.0]:
-        _gold_led_bar(root,Vector3(float(side)*0.48,0.55,1.59),Vector3(0.46,0.040,0.060),Vector3(0.0,0.0,float(side)*-6.0),red_led)
+        _gold_led_bar(root,Vector3(float(side)*0.51,0.55,1.60),Vector3(0.52,0.030,0.050),Vector3(0.0,0.0,float(side)*-7.0),red_led)
 
 func _build_gold_dragon(root: Node3D) -> void:
-    # Large dimensional Eastern-dragon relief following the hood and both body sides.
+    # v47: flatter embossed dragon graphics that follow the body like premium coachwork.
     var dragon_root: Node3D = Node3D.new()
-    dragon_root.name = "GoldenDragonBodyRelief"
+    dragon_root.name = "GoldenDragonEmbossedCoachwork"
     root.add_child(dragon_root)
 
     var gold: StandardMaterial3D = StandardMaterial3D.new()
-    gold.albedo_color = Color(0.99,0.73,0.12)
+    gold.albedo_color = Color(0.985,0.69,0.085)
     gold.metallic = 0.99
-    gold.roughness = 0.055
+    gold.roughness = 0.050
     gold.emission_enabled = true
-    gold.emission = Color(0.38,0.12,0.006)
-    gold.emission_energy_multiplier = 1.35
+    gold.emission = Color(0.07,0.018,0.001)
+    gold.emission_energy_multiplier = 0.45
 
     var bright: StandardMaterial3D = StandardMaterial3D.new()
-    bright.albedo_color = Color(1.0,0.90,0.38)
-    bright.metallic = 0.92
+    bright.albedo_color = Color(1.0,0.84,0.24)
+    bright.metallic = 0.96
     bright.roughness = 0.045
     bright.emission_enabled = true
-    bright.emission = Color(1.0,0.45,0.012)
-    bright.emission_energy_multiplier = 2.25
+    bright.emission = Color(0.12,0.035,0.002)
+    bright.emission_energy_multiplier = 0.60
 
-    # Hood dragon relief: broad ribbon, not a tiny sticker.
+    # Broad hood dragon body.
     var hood_path: Array[Vector3] = [
-        Vector3(0.00,0.37,-2.20),
-        Vector3(-0.16,0.44,-1.99),
-        Vector3(0.22,0.51,-1.76),
-        Vector3(-0.25,0.57,-1.51),
-        Vector3(0.27,0.62,-1.26),
-        Vector3(-0.24,0.66,-1.01),
-        Vector3(0.20,0.69,-0.76),
-        Vector3(-0.14,0.71,-0.50),
-        Vector3(0.08,0.72,-0.28)
+        Vector3(0.00,0.36,-2.25),
+        Vector3(-0.15,0.43,-2.05),
+        Vector3(0.20,0.50,-1.82),
+        Vector3(-0.23,0.56,-1.58),
+        Vector3(0.25,0.61,-1.34),
+        Vector3(-0.22,0.65,-1.10),
+        Vector3(0.18,0.68,-0.86),
+        Vector3(-0.13,0.70,-0.62),
+        Vector3(0.08,0.72,-0.38)
     ]
     var hood_ribbon: MeshInstance3D = MeshInstance3D.new()
-    hood_ribbon.mesh = _gold_ribbon_mesh(hood_path,0.075,Vector3.UP)
+    hood_ribbon.mesh = _gold_ribbon_mesh(hood_path,0.068,Vector3.UP)
     hood_ribbon.material_override = gold
     dragon_root.add_child(hood_ribbon)
 
-    var head: MeshInstance3D = MeshInstance3D.new()
-    var hm: SphereMesh = SphereMesh.new()
-    hm.radius = 0.18
-    hm.height = 0.22
-    head.mesh = hm
-    head.scale = Vector3(1.50,0.34,1.08)
-    head.position = Vector3(0.0,0.40,-2.26)
-    head.material_override = bright
-    dragon_root.add_child(head)
+    # Stylized flat dragon head crest.
+    var head_plate: MeshInstance3D = MeshInstance3D.new()
+    head_plate.mesh = _gold_wing_mesh(0.54,0.38,0.028,0.10)
+    head_plate.position = Vector3(0.0,0.405,-2.28)
+    head_plate.rotation_degrees.x = 7.0
+    head_plate.material_override = bright
+    dragon_root.add_child(head_plate)
 
-    # Hood scales.
-    for row in range(5):
-        for col in range(3):
-            var scale: MeshInstance3D = MeshInstance3D.new()
-            var sm: SphereMesh = SphereMesh.new()
-            sm.radius = 0.070
-            sm.height = 0.050
-            scale.mesh = sm
-            scale.scale = Vector3(1.25,0.18,0.72)
-            scale.position = Vector3((float(col)-1.0)*0.17,0.59+float(row)*0.022,-1.46+float(row)*0.18)
-            scale.material_override = bright
-            dragon_root.add_child(scale)
+    # Chevron scales molded into the hood instead of bead-like spheres.
+    for i in range(6):
+        var z: float = -1.62+float(i)*0.20
+        var width: float = 0.22+float(i)*0.025
+        var left_scale: Array[Vector3] = [
+            Vector3(-0.02,0.62+float(i)*0.014,z-0.08),
+            Vector3(-width,0.60+float(i)*0.014,z),
+            Vector3(-0.04,0.62+float(i)*0.014,z+0.08)
+        ]
+        var right_scale: Array[Vector3] = [
+            Vector3(0.02,0.62+float(i)*0.014,z-0.08),
+            Vector3(width,0.60+float(i)*0.014,z),
+            Vector3(0.04,0.62+float(i)*0.014,z+0.08)
+        ]
 
+        var ls: MeshInstance3D = MeshInstance3D.new()
+        ls.mesh = _gold_ribbon_mesh(left_scale,0.028,Vector3.UP)
+        ls.material_override = bright
+        dragon_root.add_child(ls)
+
+        var rs: MeshInstance3D = MeshInstance3D.new()
+        rs.mesh = _gold_ribbon_mesh(right_scale,0.028,Vector3.UP)
+        rs.material_override = bright
+        dragon_root.add_child(rs)
+
+    # Long side dragons, placed just above the sill where the gameplay camera reads them clearly.
     for side in [-1.0,1.0]:
         var s: float = float(side)
-
         var side_path: Array[Vector3] = [
-            Vector3(s*0.82,0.49,-1.48),
-            Vector3(s*1.01,0.49,-1.16),
-            Vector3(s*0.92,0.50,-0.82),
-            Vector3(s*1.08,0.50,-0.47),
-            Vector3(s*0.96,0.51,-0.10),
-            Vector3(s*1.09,0.50,0.27),
-            Vector3(s*0.96,0.50,0.63),
-            Vector3(s*1.05,0.49,0.96),
-            Vector3(s*0.90,0.48,1.24)
+            Vector3(s*0.85,0.47,-1.50),
+            Vector3(s*1.02,0.48,-1.17),
+            Vector3(s*0.94,0.49,-0.82),
+            Vector3(s*1.09,0.49,-0.47),
+            Vector3(s*0.97,0.50,-0.10),
+            Vector3(s*1.10,0.49,0.27),
+            Vector3(s*0.98,0.49,0.63),
+            Vector3(s*1.05,0.48,0.96),
+            Vector3(s*0.91,0.47,1.26)
         ]
 
         var ribbon: MeshInstance3D = MeshInstance3D.new()
-        ribbon.mesh = _gold_ribbon_mesh(side_path,0.070,Vector3(s,0.0,0.0))
+        ribbon.mesh = _gold_ribbon_mesh(side_path,0.060,Vector3(s,0.0,0.0))
         ribbon.material_override = gold
         dragon_root.add_child(ribbon)
 
-        # Raised scale plates along the side make the motif visible from gameplay camera.
-        for z in [-1.20,-0.88,-0.56,-0.24,0.08,0.40,0.72,1.02]:
-            var scale_mark: MeshInstance3D = MeshInstance3D.new()
-            var ssm: SphereMesh = SphereMesh.new()
-            ssm.radius = 0.075
-            ssm.height = 0.060
-            scale_mark.mesh = ssm
-            scale_mark.scale = Vector3(1.42,0.20,0.70)
-            scale_mark.position = Vector3(s*1.02,0.58,float(z))
-            scale_mark.material_override = bright
-            dragon_root.add_child(scale_mark)
+        # Three swept claw/stroke accents per side.
+        for i in range(3):
+            var z: float = -0.70+float(i)*0.68
+            var stroke: Array[Vector3] = [
+                Vector3(s*1.00,0.51,z-0.13),
+                Vector3(s*1.16,0.55,z),
+                Vector3(s*1.03,0.51,z+0.16)
+            ]
+            var mark: MeshInstance3D = MeshInstance3D.new()
+            mark.mesh = _gold_ribbon_mesh(stroke,0.024,Vector3(s,0.0,0.0))
+            mark.material_override = bright
+            dragon_root.add_child(mark)
 
-        # Head horns / whiskers.
+        # Slim horns at the hood leading edge.
         var horn: MeshInstance3D = MeshInstance3D.new()
         var horn_mesh: CylinderMesh = CylinderMesh.new()
         horn_mesh.top_radius = 0.0
-        horn_mesh.bottom_radius = 0.045
-        horn_mesh.height = 0.31
+        horn_mesh.bottom_radius = 0.034
+        horn_mesh.height = 0.27
+        horn_mesh.radial_segments = 10
         horn.mesh = horn_mesh
-        horn.position = Vector3(s*0.14,0.52,-2.26)
-        horn.rotation_degrees = Vector3(70.0,0.0,s*-20.0)
+        horn.position = Vector3(s*0.14,0.52,-2.30)
+        horn.rotation_degrees = Vector3(70.0,0.0,s*-21.0)
         horn.material_override = bright
         dragon_root.add_child(horn)
 
