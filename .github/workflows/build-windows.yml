@@ -86,4 +86,6 @@ jobs:
           path: |
             build/ForestCircuitKart.exe
             build/gold_dragon_kart.glb
+            build/blender.gold_redblack.blend
+            build/red_black_kart_preview.png
           retention-days: 30
