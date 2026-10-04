@@ -39,6 +39,10 @@ var nickname_overlay: Control
 var nickname_edit: LineEdit
 var nickname_error: Label
 var nickname_title: Label
+var menu_content_panel: PanelContainer
+var code_overlay: Control
+var code_edit: LineEdit
+var code_message: Label
 
 const RARITY_COLORS: Dictionary = {
     "일반":Color(0.78,0.84,0.90),
@@ -64,8 +68,8 @@ func configure(data: Dictionary, order: Array[String], lan_ip: String, lan_port:
         selected_kart = "rookie"
     _select_mode("cpu")
     _select_kart(selected_kart)
-    _open_tab("kart")
     _refresh_profile_bar()
+    _hide_menu_panel()
 
 func _panel(bg: Color = Color(0.010,0.014,0.022,0.95), border: Color = Color(0.38,0.055,0.060,0.82), radius: int = 10) -> StyleBoxFlat:
     var style: StyleBoxFlat = StyleBoxFlat.new()
@@ -180,26 +184,33 @@ func _build_ui() -> void:
     xp_bar.max_value = 1
     profile_box.add_child(xp_bar)
 
-    var profile_button: Button = Button.new()
-    profile_button.text = "프로필"
-    profile_button.custom_minimum_size = Vector2(66,32)
-    _style_button(profile_button,false)
-    profile_button.pressed.connect(_open_account_editor)
-    profile_box.add_child(profile_button)
-
     var left_space: Control = Control.new()
     left_space.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     top_row.add_child(left_space)
 
     for item in [
-        ["카트","kart"],["레이스","mode"],["맵","map"],["뽑기","gacha"],["장비","equipment"]
+        ["맵","map"],["카트","kart"],["뽑기","gacha"]
     ]:
         var nav_button: Button = Button.new()
         nav_button.text = str(item[0])
         nav_button.custom_minimum_size = Vector2(82,38)
-        _style_button(nav_button,str(item[1]) == "kart")
+        _style_button(nav_button,false)
         nav_button.pressed.connect(_open_tab.bind(str(item[1])))
         top_row.add_child(nav_button)
+
+    var code_button: Button = Button.new()
+    code_button.text = "코드"
+    code_button.custom_minimum_size = Vector2(82,38)
+    _style_button(code_button,false)
+    code_button.pressed.connect(_open_code_overlay)
+    top_row.add_child(code_button)
+
+    var profile_button: Button = Button.new()
+    profile_button.text = "프로필"
+    profile_button.custom_minimum_size = Vector2(82,38)
+    _style_button(profile_button,false)
+    profile_button.pressed.connect(_open_account_editor)
+    top_row.add_child(profile_button)
 
     var right_space: Control = Control.new()
     right_space.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -323,18 +334,19 @@ func _build_ui() -> void:
     description_label.modulate = Color(0.68,0.73,0.82,0.92)
     root.add_child(description_label)
 
-    var content_panel: PanelContainer = PanelContainer.new()
-    content_panel.custom_minimum_size = Vector2(382,0)
-    content_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    content_panel.add_theme_stylebox_override("panel",_panel(Color(0.012,0.016,0.025,0.97),Color(0.25,0.035,0.045,0.92),0))
-    main.add_child(content_panel)
+    menu_content_panel = PanelContainer.new()
+    menu_content_panel.custom_minimum_size = Vector2(410,0)
+    menu_content_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    menu_content_panel.add_theme_stylebox_override("panel",_panel(Color(0.012,0.016,0.025,0.97),Color(0.25,0.035,0.045,0.92),0))
+    menu_content_panel.visible = false
+    main.add_child(menu_content_panel)
 
     var content_margin: MarginContainer = MarginContainer.new()
     content_margin.add_theme_constant_override("margin_left",16)
     content_margin.add_theme_constant_override("margin_right",16)
     content_margin.add_theme_constant_override("margin_top",18)
     content_margin.add_theme_constant_override("margin_bottom",72)
-    content_panel.add_child(content_margin)
+    menu_content_panel.add_child(content_margin)
 
     content_root = VBoxContainer.new()
     content_root.add_theme_constant_override("separation",9)
@@ -421,6 +433,109 @@ func _build_ui() -> void:
     start_button.add_theme_color_override("font_hover_color",Color.WHITE)
     start_button.pressed.connect(_on_start_pressed)
     root.add_child(start_button)
+
+func _open_code_overlay() -> void:
+    if code_overlay == null:
+        code_overlay = Control.new()
+        code_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+        code_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+        code_overlay.z_index = 220
+        add_child(code_overlay)
+
+        var dim: ColorRect = ColorRect.new()
+        dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+        dim.color = Color(0.002,0.003,0.006,0.88)
+        code_overlay.add_child(dim)
+
+        var center: CenterContainer = CenterContainer.new()
+        center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+        code_overlay.add_child(center)
+
+        var card: PanelContainer = PanelContainer.new()
+        card.custom_minimum_size = Vector2(430,245)
+        card.add_theme_stylebox_override("panel",_panel(Color(0.010,0.014,0.022,0.99),Color(0.72,0.055,0.065,1.0),12))
+        center.add_child(card)
+
+        var margin: MarginContainer = MarginContainer.new()
+        margin.add_theme_constant_override("margin_left",28)
+        margin.add_theme_constant_override("margin_right",28)
+        margin.add_theme_constant_override("margin_top",24)
+        margin.add_theme_constant_override("margin_bottom",24)
+        card.add_child(margin)
+
+        var v: VBoxContainer = VBoxContainer.new()
+        v.add_theme_constant_override("separation",12)
+        margin.add_child(v)
+
+        var title: Label = Label.new()
+        title.text = "프로모션 코드"
+        title.add_theme_font_size_override("font_size",24)
+        v.add_child(title)
+
+        code_edit = LineEdit.new()
+        code_edit.placeholder_text = "코드 입력"
+        code_edit.custom_minimum_size.y = 44
+        code_edit.text_submitted.connect(_redeem_code)
+        v.add_child(code_edit)
+
+        code_message = Label.new()
+        code_message.text = ""
+        code_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        code_message.modulate = Color(0.70,0.76,0.84)
+        v.add_child(code_message)
+
+        var redeem_button: Button = Button.new()
+        redeem_button.text = "코드 사용"
+        redeem_button.custom_minimum_size.y = 44
+        _style_button(redeem_button,true)
+        redeem_button.pressed.connect(_redeem_code_from_button)
+        v.add_child(redeem_button)
+
+        var close_button: Button = Button.new()
+        close_button.text = "닫기"
+        _style_button(close_button,false)
+        close_button.pressed.connect(_close_code_overlay)
+        v.add_child(close_button)
+
+    code_overlay.visible = true
+    code_edit.text = ""
+    code_message.text = ""
+    code_edit.grab_focus()
+
+
+func _redeem_code_from_button() -> void:
+    if code_edit:
+        _redeem_code(code_edit.text)
+
+
+func _redeem_code(value: String) -> void:
+    var code: String = value.strip_edges().to_lower()
+    if code != "kimyeonjun":
+        code_message.text = "유효하지 않은 코드입니다."
+        code_message.modulate = Color(1.0,0.32,0.34)
+        return
+
+    var redeemed: Array = profile.get("redeemed_codes",[]) as Array
+    if redeemed.has("kimyeonjun"):
+        code_message.text = "이 계정에서는 이미 사용한 코드입니다."
+        code_message.modulate = Color(1.0,0.62,0.22)
+        return
+
+    redeemed.append("kimyeonjun")
+    profile["redeemed_codes"] = redeemed
+    profile["gold"] = int(profile.get("gold",0))+100000
+    ProfileManager.save_profile(profile)
+    _animate_gold_to(int(profile["gold"]))
+    _refresh_profile_bar()
+    code_message.text = "코드 사용 성공!  +100,000 GOLD"
+    code_message.modulate = Color(0.42,1.0,0.48)
+    result_label.text = "프로모션 코드 보상 +100,000 GOLD"
+
+
+func _close_code_overlay() -> void:
+    if code_overlay:
+        code_overlay.visible = false
+
 
 func get_player_name() -> String:
     var nickname: String = str(profile.get("player_name","")).strip_edges()
@@ -534,6 +649,7 @@ func _confirm_nickname(value: String) -> void:
     _refresh_profile_bar()
     if nickname_overlay:
         nickname_overlay.visible = false
+    _hide_menu_panel()
     if start_button:
         start_button.disabled = false
     result_label.text = "%s 프로필로 접속됨" % get_player_name()
@@ -721,27 +837,66 @@ func _open_tab(tab: String) -> void:
     current_tab = tab
     if content_root == null:
         return
+    if menu_content_panel:
+        menu_content_panel.visible = true
     _clear_content()
     match tab:
         "kart":
             _build_kart_tab()
-        "mode":
-            _build_mode_tab()
         "map":
             _build_map_tab()
         "gacha":
             _build_gacha_tab()
-        "equipment":
-            _build_equipment_tab()
         _:
             _build_kart_tab()
+
+    var close_button: Button = Button.new()
+    close_button.text = "닫기"
+    close_button.custom_minimum_size.y = 38
+    _style_button(close_button,false)
+    close_button.pressed.connect(_hide_menu_panel)
+    content_root.add_child(close_button)
+
+
+func _hide_menu_panel() -> void:
+    if menu_content_panel:
+        menu_content_panel.visible = false
 
 func _build_kart_tab() -> void:
     tab_title.text = "카트 / 강화"
 
+    if kart_data.has(selected_kart):
+        var selected_data: Dictionary = kart_data[selected_kart] as Dictionary
+        var selected_name: Label = Label.new()
+        selected_name.text = str(selected_data.get("display_name",selected_kart))
+        selected_name.add_theme_font_size_override("font_size",18)
+        selected_name.modulate = Color(0.96,0.97,1.0)
+        content_root.add_child(selected_name)
+
+        var lvl: int = get_upgrade_level(selected_kart)
+        var cost: int = upgrade_cost(lvl)
+        var upgrade_button: Button = Button.new()
+        upgrade_button.text = ("강화하기   %d GOLD" % cost) if lvl < 10 else "강화 완료   MAX +10"
+        upgrade_button.custom_minimum_size.y = 48
+        upgrade_button.disabled = lvl >= 10 or int(profile.get("gold",0)) < cost
+        _style_button(upgrade_button,true)
+        upgrade_button.pressed.connect(_upgrade_selected_kart)
+        content_root.add_child(upgrade_button)
+
+        var level_info: Label = Label.new()
+        level_info.text = "현재 강화  +%d / +10" % lvl
+        level_info.modulate = Color(0.72,0.77,0.84)
+        content_root.add_child(level_info)
+
+    var choose_label: Label = Label.new()
+    choose_label.text = "보유 카트"
+    choose_label.add_theme_font_size_override("font_size",14)
+    choose_label.modulate = Color(0.72,0.16,0.18)
+    content_root.add_child(choose_label)
+
     var scroll: ScrollContainer = ScrollContainer.new()
     scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    scroll.custom_minimum_size.y = 260
+    scroll.custom_minimum_size.y = 190
     content_root.add_child(scroll)
 
     var list: VBoxContainer = VBoxContainer.new()
@@ -754,57 +909,18 @@ func _build_kart_tab() -> void:
             continue
         var level: int = get_upgrade_level(id)
         var owned: bool = _owned_karts().has(id)
-        var b: Button = Button.new()
-        b.text = "%s   +%d%s" % [str((kart_data[id] as Dictionary).get("display_name",id)),level,("" if owned else "  [LOCK]")]
-        b.custom_minimum_size.y = 42
-        b.disabled = not owned
-        _style_button(b)
-        b.pressed.connect(_select_kart.bind(id))
-        list.add_child(b)
-
-    var locked: Label = Label.new()
-    locked.text = "잠긴 카트: 오로라 캣 X / 타이거 제트 (추후 해금)"
-    locked.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    locked.modulate = Color(0.52,0.62,0.72)
-    content_root.add_child(locked)
-
-    _add_upgrade_panel()
+        var button: Button = Button.new()
+        button.text = "%s   +%d%s" % [str((kart_data[id] as Dictionary).get("display_name",id)),level,("" if owned else "  [LOCK]")]
+        button.custom_minimum_size.y = 40
+        button.disabled = not owned
+        _style_button(button,id == selected_kart)
+        button.pressed.connect(_select_kart.bind(id))
+        list.add_child(button)
 
 func _add_upgrade_panel() -> void:
-    if not kart_data.has(selected_kart):
-        return
-
-    var lvl: int = get_upgrade_level(selected_kart)
-    var title: Label = Label.new()
-    title.text = "강화 레벨  +%d / +10" % lvl
-    title.add_theme_font_size_override("font_size",18)
-    content_root.add_child(title)
-
-    var base: Dictionary = kart_data[selected_kart] as Dictionary
-    var now: Dictionary = _effective_stats(base,lvl)
-    var next: Dictionary = _effective_stats(base,min(10,lvl+1))
-
-    var rows: Array = [
-        ["최고 속도","max_speed"],["가속력","acceleration"],["드리프트","drift_charge_rate"],
-        ["부스터","boost_speed"],["핸들링","steer_rate"]
-    ]
-    for row in rows:
-        var l: Label = Label.new()
-        var key: String = str(row[1])
-        if key == "steer_rate":
-            l.text = "%s  %.2f  →  %.2f" % [str(row[0]),float(now[key]),float(next[key])]
-        else:
-            l.text = "%s  %.1f  →  %.1f" % [str(row[0]),float(now[key]),float(next[key])]
-        l.modulate = Color(0.82,0.90,0.96)
-        content_root.add_child(l)
-
-    var cost: int = upgrade_cost(lvl)
-    var upgrade: Button = Button.new()
-    upgrade.text = "강화하기   %d GOLD" % cost if lvl < 10 else "MAX +10"
-    upgrade.disabled = lvl >= 10 or int(profile.get("gold",0)) < cost
-    _style_button(upgrade,true)
-    upgrade.pressed.connect(_upgrade_selected_kart)
-    content_root.add_child(upgrade)
+    # Upgrade control is intentionally placed at the top of the kart panel
+    # so it is always visible without scrolling.
+    pass
 
 func _build_mode_tab() -> void:
     tab_title.text = "레이스 모드"

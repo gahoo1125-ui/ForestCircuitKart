@@ -26,7 +26,8 @@ static func default_profile() -> Dictionary:
         "owned_cosmetics":[],
         "upgrade_material":0,
         "total_races":0,
-        "wins":0
+        "wins":0,
+        "redeemed_codes":[]
     }
 
 static func sanitize_nickname(value: String) -> String:
