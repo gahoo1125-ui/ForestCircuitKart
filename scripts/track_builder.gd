@@ -47,6 +47,17 @@ func _sample_track() -> void:
         Vector3(-24,0,-78)
     ]
 
+    # v74: make the existing circuit only slightly longer without changing
+    # its overall shape. Scaling around the origin preserves the same corners,
+    # checkpoint ordering and procedural scenery logic while adding ~4% length.
+    const TRACK_LENGTH_SCALE: float = 1.04
+    for i in range(controls.size()):
+        controls[i] = Vector3(
+            controls[i].x*TRACK_LENGTH_SCALE,
+            controls[i].y,
+            controls[i].z*TRACK_LENGTH_SCALE
+        )
+
     var per_segment: int = 24
     var count: int = controls.size()
     for i in range(count):
