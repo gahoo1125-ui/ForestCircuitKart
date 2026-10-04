@@ -64,9 +64,9 @@ const CORNER_SLIP_RESPONSE: float = 5.8
 const CORNER_SLIP_RECOVERY: float = 8.0
 
 # Lightweight pooled red drift marks for the endgame kart.
-const RED_DRIFT_MARK_POOL_SIZE: int = 48
-const RED_DRIFT_MARK_LIFETIME: float = 1.75
-const RED_DRIFT_MARK_SAMPLE_INTERVAL: float = 0.082
+const RED_DRIFT_MARK_POOL_SIZE: int = 28
+const RED_DRIFT_MARK_LIFETIME: float = 1.25
+const RED_DRIFT_MARK_SAMPLE_INTERVAL: float = 0.10
 const RED_DRIFT_REAR_OFFSET: float = 0.92
 const RED_DRIFT_TIRE_OFFSET: float = 1.14
 
@@ -93,6 +93,11 @@ var red_drift_mark_pool: Array[MeshInstance3D] = []
 var red_drift_mark_ages: Array[float] = []
 var red_drift_mark_cursor: int = 0
 var red_drift_mark_sample_timer: float = 0.0
+var red_drift_fade_accumulator: float = 0.0
+var red_drift_has_previous: bool = false
+var red_drift_prev_left: Vector3 = Vector3.ZERO
+var red_drift_prev_right: Vector3 = Vector3.ZERO
+var gold_red_boost_visual_state: bool = false
 var remote_position: Vector3 = Vector3.ZERO
 var remote_yaw: float = 0.0
 var remote_speed: float = 0.0
@@ -666,45 +671,31 @@ func _register_gold_red_boost_materials(model_root: Node3D) -> void:
                 mesh_instance.set_surface_override_material(surface_index,runtime_mat)
                 gold_red_boost_materials.append(runtime_mat)
 
+    _set_gold_red_boost_glow(false)
 
-func _update_gold_red_boost_glow(boosting: bool, delta: float) -> void:
+func _set_gold_red_boost_glow(boosting: bool) -> void:
     if gold_red_boost_materials.is_empty():
+        gold_red_boost_visual_state = boosting
         return
 
-    var response: float = 1.0-exp(-(10.0 if boosting else 6.0)*delta)
+    gold_red_boost_visual_state = boosting
     for material in gold_red_boost_materials:
         if material == null:
             continue
 
         var material_name: String = material.resource_name
-        var base_color: Color = Color(0.50,0.004,0.008)
-        var idle_emission: Color = Color(0.11,0.0015,0.0020)
-        var boost_color: Color = Color(0.95,0.010,0.016)
-        var boost_emission: Color = Color(1.0,0.015,0.010)
-        var idle_energy: float = 0.75
-        var boost_energy: float = 5.2
-
         if material_name.contains("RB_DeepRed"):
-            base_color = Color(0.23,0.002,0.004)
-            idle_emission = Color(0.055,0.0005,0.0008)
-            boost_color = Color(0.72,0.006,0.010)
-            boost_energy = 3.8
+            material.albedo_color = Color(0.70,0.004,0.008) if boosting else Color(0.23,0.002,0.004)
+            material.emission = Color(1.0,0.010,0.008) if boosting else Color(0.055,0.0005,0.0008)
+            material.emission_energy_multiplier = 3.8 if boosting else 0.55
         elif material_name.contains("RB_RedGlow"):
-            base_color = Color(0.72,0.010,0.014)
-            idle_emission = Color(0.52,0.004,0.004)
-            idle_energy = 2.2
-            boost_color = Color(1.0,0.025,0.028)
-            boost_emission = Color(1.0,0.020,0.014)
-            boost_energy = 7.0
-
-        var target_color: Color = boost_color if boosting else base_color
-        var target_emission: Color = boost_emission if boosting else idle_emission
-        var target_energy: float = boost_energy if boosting else idle_energy
-
-        material.albedo_color = material.albedo_color.lerp(target_color,response)
-        material.emission = material.emission.lerp(target_emission,response)
-        material.emission_energy_multiplier = lerp(material.emission_energy_multiplier,target_energy,response)
-
+            material.albedo_color = Color(1.0,0.020,0.025) if boosting else Color(0.72,0.010,0.014)
+            material.emission = Color(1.0,0.018,0.012) if boosting else Color(0.52,0.004,0.004)
+            material.emission_energy_multiplier = 7.0 if boosting else 2.2
+        else:
+            material.albedo_color = Color(0.95,0.008,0.014) if boosting else Color(0.50,0.004,0.008)
+            material.emission = Color(1.0,0.014,0.009) if boosting else Color(0.11,0.0015,0.0020)
+            material.emission_energy_multiplier = 5.2 if boosting else 0.75
 
 func _build_gold_foundation(root: Node3D, body_mat: StandardMaterial3D, dark: StandardMaterial3D) -> void:
     # Premium full-body shell: deep carbon-black paint, integrated glass and detailed wheels.
@@ -1420,10 +1411,10 @@ func _build_gold_dragon_flight() -> void:
 func _update_boost_fx(delta: float, boosting: bool) -> void:
     boost_fx_time += delta
 
-    # Endgame kart boost is intentionally lightweight:
-    # red body material brightening + two exhaust flames only.
-    if kart_id == "gold":
-        _update_gold_red_boost_glow(boosting,delta)
+    # Body material only changes when boost switches on/off; no per-frame
+    # material interpolation cost.
+    if kart_id == "gold" and boosting != gold_red_boost_visual_state:
+        _set_gold_red_boost_glow(boosting)
 
     if speed_fx_root:
         speed_fx_root.visible = boosting and kart_id != "gold"
@@ -1431,19 +1422,9 @@ func _update_boost_fx(delta: float, boosting: bool) -> void:
             for i in range(speed_streaks.size()):
                 var streak: MeshInstance3D = speed_streaks[i]
                 streak.position.z = 1.5+fmod(boost_fx_time*(7.5+float(i)*0.35)+float(i)*0.48,3.4)
-        else:
-            speed_fx_root.scale = Vector3.ONE
 
     if gold_boost_root:
         gold_boost_root.visible = boosting
-        if boosting:
-            var pulse: float = 1.0+sin(boost_fx_time*18.0)*0.06
-            gold_boost_root.scale = Vector3(1.0,1.0,pulse)
-        else:
-            gold_boost_root.scale = Vector3.ONE
-
-    # Dragon-shaped boost effect, scales, sparks, trail history and animation
-    # were removed from the runtime path to minimize frame-time spikes.
 
 func _read_controls() -> Dictionary:
     if control_mode == "cpu":
@@ -1870,16 +1851,22 @@ func _setup_red_drift_mark_pool() -> void:
         return
 
     red_drift_marks_root = Node3D.new()
-    red_drift_marks_root.name = "RedDriftMarksPool"
+    red_drift_marks_root.name = "RedDriftMarksPoolV66"
     get_parent().add_child(red_drift_marks_root)
 
+    # Shared geometry/material: only 28 reusable instances and no allocations
+    # while driving.
     var mark_mesh: BoxMesh = BoxMesh.new()
-    mark_mesh.size = Vector3(0.105,0.010,0.58)
+    mark_mesh.size = Vector3(0.18,0.012,1.0)
 
     var mark_mat: StandardMaterial3D = StandardMaterial3D.new()
-    mark_mat.albedo_color = Color(0.88,0.012,0.020,0.86)
+    mark_mat.albedo_color = Color(0.98,0.008,0.014,1.0)
+    mark_mat.metallic = 0.15
+    mark_mat.roughness = 0.22
+    mark_mat.emission_enabled = true
+    mark_mat.emission = Color(1.0,0.006,0.012)
+    mark_mat.emission_energy_multiplier = 2.4
     mark_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-    mark_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
     mark_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 
     red_drift_mark_pool.clear()
@@ -1887,7 +1874,7 @@ func _setup_red_drift_mark_pool() -> void:
 
     for i in range(RED_DRIFT_MARK_POOL_SIZE):
         var mark: MeshInstance3D = MeshInstance3D.new()
-        mark.name = "RedSkid_%02d" % i
+        mark.name = "RedDriftSegment_%02d" % i
         mark.mesh = mark_mesh
         mark.material_override = mark_mat
         mark.visible = false
@@ -1899,67 +1886,99 @@ func _setup_red_drift_mark_pool() -> void:
 
     red_drift_mark_cursor = 0
     red_drift_mark_sample_timer = 0.0
+    red_drift_fade_accumulator = 0.0
+    red_drift_has_previous = false
 
-
-func _spawn_red_drift_mark(position: Vector3, yaw: float) -> void:
+func _spawn_red_drift_segment(start_pos: Vector3, end_pos: Vector3) -> void:
     if red_drift_mark_pool.is_empty():
+        return
+
+    var flat_start: Vector3 = start_pos
+    var flat_end: Vector3 = end_pos
+    var road_y: float = (start_pos.y+end_pos.y)*0.5
+    flat_start.y = road_y
+    flat_end.y = road_y
+
+    var delta_pos: Vector3 = flat_end-flat_start
+    delta_pos.y = 0.0
+    var length: float = delta_pos.length()
+    if length < 0.04:
         return
 
     var index: int = red_drift_mark_cursor
     red_drift_mark_cursor = (red_drift_mark_cursor+1) % red_drift_mark_pool.size()
 
     var mark: MeshInstance3D = red_drift_mark_pool[index]
-    mark.global_position = position
-    mark.global_rotation = Vector3(0.0,yaw,0.0)
+    mark.global_position = (flat_start+flat_end)*0.5
+    mark.global_rotation = Vector3(0.0,atan2(delta_pos.x,delta_pos.z),0.0)
+    mark.scale = Vector3(1.0,1.0,length)
     mark.transparency = 0.0
     mark.visible = true
     red_drift_mark_ages[index] = 0.0
-
 
 func _update_red_drift_marks(delta: float, drifting: bool) -> void:
     if red_drift_mark_pool.is_empty():
         return
 
-    # Fade a fixed pool instead of allocating/freeing meshes during the race.
-    for i in range(red_drift_mark_pool.size()):
-        var mark: MeshInstance3D = red_drift_mark_pool[i]
-        if not mark.visible:
-            continue
+    # Fade only at 16 Hz instead of touching every transparent mesh every
+    # physics frame.
+    red_drift_fade_accumulator += delta
+    if red_drift_fade_accumulator >= 0.0625:
+        var fade_dt: float = red_drift_fade_accumulator
+        red_drift_fade_accumulator = 0.0
+        for i in range(red_drift_mark_pool.size()):
+            var mark: MeshInstance3D = red_drift_mark_pool[i]
+            if not mark.visible:
+                continue
 
-        var age: float = red_drift_mark_ages[i]+delta
-        red_drift_mark_ages[i] = age
+            var age: float = red_drift_mark_ages[i]+fade_dt
+            red_drift_mark_ages[i] = age
 
-        if age >= RED_DRIFT_MARK_LIFETIME:
-            mark.visible = false
-            mark.transparency = 1.0
-            continue
+            if age >= RED_DRIFT_MARK_LIFETIME:
+                mark.visible = false
+                mark.transparency = 1.0
+                continue
 
-        # Stay vivid briefly, then fade smoothly.
-        var fade_start: float = RED_DRIFT_MARK_LIFETIME*0.28
-        var alpha: float = 1.0
-        if age > fade_start:
-            alpha = 1.0-(age-fade_start)/(RED_DRIFT_MARK_LIFETIME-fade_start)
-        mark.transparency = 1.0-clamp(alpha,0.0,1.0)
+            var fade_start: float = 0.42
+            var alpha: float = 1.0
+            if age > fade_start:
+                alpha = 1.0-(age-fade_start)/(RED_DRIFT_MARK_LIFETIME-fade_start)
+            mark.transparency = 1.0-clamp(alpha,0.0,1.0)
 
-    red_drift_mark_sample_timer = max(0.0,red_drift_mark_sample_timer-delta)
-
-    if not drifting or abs(forward_speed) < DRIFT_MIN_SPEED or red_drift_mark_sample_timer > 0.0:
+    if not drifting or abs(forward_speed) < DRIFT_MIN_SPEED:
+        red_drift_has_previous = false
+        red_drift_mark_sample_timer = 0.0
         return
-
-    red_drift_mark_sample_timer = RED_DRIFT_MARK_SAMPLE_INTERVAL
 
     var body_forward: Vector3 = -global_transform.basis.z.normalized()
     var body_right: Vector3 = global_transform.basis.x.normalized()
     var rear_center: Vector3 = global_position-body_forward*RED_DRIFT_REAR_OFFSET
+    var road_y: float = global_position.y-0.515-jump_height
 
-    # Kart rides at road height + 0.55, so place the strips just above the road.
-    var road_y: float = global_position.y-0.535-jump_height
+    var current_left: Vector3 = rear_center-body_right*RED_DRIFT_TIRE_OFFSET
+    var current_right: Vector3 = rear_center+body_right*RED_DRIFT_TIRE_OFFSET
+    current_left.y = road_y
+    current_right.y = road_y
 
-    for side in [-1.0,1.0]:
-        var mark_pos: Vector3 = rear_center+body_right*(float(side)*RED_DRIFT_TIRE_OFFSET)
-        mark_pos.y = road_y
-        _spawn_red_drift_mark(mark_pos,global_rotation.y)
+    if not red_drift_has_previous:
+        red_drift_prev_left = current_left
+        red_drift_prev_right = current_right
+        red_drift_has_previous = true
+        red_drift_mark_sample_timer = RED_DRIFT_MARK_SAMPLE_INTERVAL
+        return
 
+    red_drift_mark_sample_timer -= delta
+    if red_drift_mark_sample_timer > 0.0:
+        return
+    red_drift_mark_sample_timer = RED_DRIFT_MARK_SAMPLE_INTERVAL
+
+    # Stretch each pooled piece from the previous wheel position to the current
+    # one, so the result reads as two continuous glowing tire lines instead of
+    # separated red dots.
+    _spawn_red_drift_segment(red_drift_prev_left,current_left)
+    _spawn_red_drift_segment(red_drift_prev_right,current_right)
+    red_drift_prev_left = current_left
+    red_drift_prev_right = current_right
 
 func _clear_red_drift_marks() -> void:
     for i in range(red_drift_mark_pool.size()):
@@ -1967,7 +1986,8 @@ func _clear_red_drift_marks() -> void:
         red_drift_mark_pool[i].transparency = 1.0
         red_drift_mark_ages[i] = RED_DRIFT_MARK_LIFETIME
     red_drift_mark_sample_timer = 0.0
-
+    red_drift_fade_accumulator = 0.0
+    red_drift_has_previous = false
 
 func _exit_tree() -> void:
     if red_drift_marks_root != null and is_instance_valid(red_drift_marks_root):
