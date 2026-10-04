@@ -62,119 +62,172 @@ func configure(data: Dictionary, order: Array[String], lan_ip: String, lan_port:
     _open_tab("kart")
     _refresh_profile_bar()
 
-func _panel(bg: Color = Color(0.012,0.035,0.060,0.94), border: Color = Color(0.14,0.53,0.72,0.72), radius: int = 8) -> StyleBoxFlat:
-    var s: StyleBoxFlat = StyleBoxFlat.new()
-    s.bg_color = bg
-    s.border_color = border
-    s.set_border_width_all(2)
-    s.corner_radius_top_left = radius
-    s.corner_radius_top_right = radius
-    s.corner_radius_bottom_left = radius
-    s.corner_radius_bottom_right = radius
-    return s
+func _panel(bg: Color = Color(0.010,0.014,0.022,0.95), border: Color = Color(0.38,0.055,0.060,0.82), radius: int = 10) -> StyleBoxFlat:
+    var style: StyleBoxFlat = StyleBoxFlat.new()
+    style.bg_color = bg
+    style.border_color = border
+    style.set_border_width_all(1)
+    style.corner_radius_top_left = radius
+    style.corner_radius_top_right = radius
+    style.corner_radius_bottom_left = radius
+    style.corner_radius_bottom_right = radius
+    style.content_margin_left = 12.0
+    style.content_margin_right = 12.0
+    style.content_margin_top = 8.0
+    style.content_margin_bottom = 8.0
+    return style
 
-func _style_button(b: Button, accent: bool = false) -> void:
-    b.add_theme_font_size_override("font_size",15)
+func _style_button(button: Button, accent: bool = false) -> void:
+    button.add_theme_font_size_override("font_size",15)
+    button.add_theme_color_override("font_color",Color(0.86,0.89,0.94))
+    button.add_theme_color_override("font_hover_color",Color.WHITE)
+    button.add_theme_color_override("font_pressed_color",Color.WHITE)
     if accent:
-        b.add_theme_stylebox_override("normal",_panel(Color(0.06,0.56,0.86,0.98),Color(0.38,0.90,1.0,1.0),7))
-        b.add_theme_stylebox_override("hover",_panel(Color(0.08,0.70,0.96,1.0),Color(0.62,0.96,1.0,1.0),7))
+        button.add_theme_stylebox_override("normal",_panel(Color(0.44,0.020,0.028,0.98),Color(0.95,0.12,0.14,1.0),8))
+        button.add_theme_stylebox_override("hover",_panel(Color(0.66,0.025,0.035,1.0),Color(1.0,0.30,0.32,1.0),8))
+        button.add_theme_stylebox_override("pressed",_panel(Color(0.31,0.010,0.018,1.0),Color(1.0,0.14,0.16,1.0),8))
     else:
-        b.add_theme_stylebox_override("normal",_panel(Color(0.015,0.050,0.078,0.94),Color(0.12,0.35,0.48,0.72),7))
-        b.add_theme_stylebox_override("hover",_panel(Color(0.025,0.16,0.22,0.98),Color(0.22,0.80,1.0,1.0),7))
+        button.add_theme_stylebox_override("normal",_panel(Color(0.020,0.027,0.040,0.96),Color(0.12,0.16,0.22,0.92),8))
+        button.add_theme_stylebox_override("hover",_panel(Color(0.055,0.025,0.035,0.98),Color(0.70,0.08,0.10,0.95),8))
+        button.add_theme_stylebox_override("pressed",_panel(Color(0.10,0.025,0.035,1.0),Color(0.92,0.10,0.12,1.0),8))
 
 func _build_ui() -> void:
     var root: Control = Control.new()
     root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     add_child(root)
 
+    # Deep premium garage background.
     var bg: ColorRect = ColorRect.new()
     bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    bg.color = Color(0.84,0.92,0.96,1.0)
+    bg.color = Color(0.006,0.008,0.013,1.0)
     root.add_child(bg)
 
-    # Slim racing-game top bar: player on the left, hub categories in the middle,
-    # currency on the right. The 3D showroom stays dominant.
+    var upper_glow: ColorRect = ColorRect.new()
+    upper_glow.anchor_left = 0.0
+    upper_glow.anchor_right = 1.0
+    upper_glow.offset_bottom = 150.0
+    upper_glow.color = Color(0.16,0.010,0.018,0.24)
+    root.add_child(upper_glow)
+
+    var left_glow: ColorRect = ColorRect.new()
+    left_glow.anchor_left = 0.0
+    left_glow.anchor_top = 0.0
+    left_glow.anchor_bottom = 1.0
+    left_glow.offset_right = 7.0
+    left_glow.color = Color(0.82,0.035,0.045,0.95)
+    root.add_child(left_glow)
+
+    # Premium header.
     var top: PanelContainer = PanelContainer.new()
     top.anchor_left = 0.0
     top.anchor_right = 1.0
-    top.offset_bottom = 58.0
-    top.add_theme_stylebox_override("panel",_panel(Color(0.97,0.985,1.0,0.96),Color(0.72,0.82,0.90,0.92),0))
+    top.offset_left = 7.0
+    top.offset_bottom = 72.0
+    top.add_theme_stylebox_override("panel",_panel(Color(0.010,0.014,0.022,0.985),Color(0.18,0.025,0.035,0.98),0))
     root.add_child(top)
 
     var top_margin: MarginContainer = MarginContainer.new()
-    top_margin.add_theme_constant_override("margin_left",16)
-    top_margin.add_theme_constant_override("margin_right",16)
-    top_margin.add_theme_constant_override("margin_top",7)
-    top_margin.add_theme_constant_override("margin_bottom",7)
+    top_margin.add_theme_constant_override("margin_left",20)
+    top_margin.add_theme_constant_override("margin_right",20)
+    top_margin.add_theme_constant_override("margin_top",10)
+    top_margin.add_theme_constant_override("margin_bottom",10)
     top.add_child(top_margin)
 
     var top_row: HBoxContainer = HBoxContainer.new()
     top_row.add_theme_constant_override("separation",10)
     top_margin.add_child(top_row)
 
+    var brand_box: VBoxContainer = VBoxContainer.new()
+    brand_box.custom_minimum_size.x = 240
+    brand_box.add_theme_constant_override("separation",-2)
+    top_row.add_child(brand_box)
+
+    var brand: Label = Label.new()
+    brand.text = "FOREST CIRCUIT"
+    brand.add_theme_font_size_override("font_size",22)
+    brand.modulate = Color(0.98,0.985,1.0)
+    brand_box.add_child(brand)
+
+    var sub_brand: Label = Label.new()
+    sub_brand.text = "PERFORMANCE GARAGE  //  NIGHT SPEC"
+    sub_brand.add_theme_font_size_override("font_size",10)
+    sub_brand.modulate = Color(0.72,0.20,0.22)
+    brand_box.add_child(sub_brand)
+
+    var profile_box: HBoxContainer = HBoxContainer.new()
+    profile_box.add_theme_constant_override("separation",8)
+    top_row.add_child(profile_box)
+
     player_label = Label.new()
-    player_label.add_theme_font_size_override("font_size",18)
-    player_label.modulate = Color(0.08,0.12,0.18)
-    top_row.add_child(player_label)
+    player_label.add_theme_font_size_override("font_size",16)
+    player_label.modulate = Color(0.86,0.90,0.96)
+    profile_box.add_child(player_label)
 
     level_label = Label.new()
-    level_label.add_theme_font_size_override("font_size",15)
-    level_label.modulate = Color(0.10,0.42,0.72)
-    top_row.add_child(level_label)
+    level_label.add_theme_font_size_override("font_size",13)
+    level_label.modulate = Color(0.95,0.20,0.22)
+    profile_box.add_child(level_label)
 
     xp_bar = ProgressBar.new()
-    xp_bar.custom_minimum_size = Vector2(150,15)
+    xp_bar.custom_minimum_size = Vector2(120,12)
     xp_bar.show_percentage = false
     xp_bar.min_value = 0
     xp_bar.max_value = 1
-    top_row.add_child(xp_bar)
+    profile_box.add_child(xp_bar)
 
     var left_space: Control = Control.new()
     left_space.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     top_row.add_child(left_space)
 
     for item in [
-        ["카트","kart"],["모드","mode"],["맵","map"],["뽑기","gacha"],["장비","equipment"]
+        ["KART","kart"],["MODE","mode"],["TRACK","map"],["DRAW","gacha"],["GEAR","equipment"]
     ]:
-        var b: Button = Button.new()
-        b.text = str(item[0])
-        b.custom_minimum_size = Vector2(72,38)
-        _style_button(b,str(item[1]) == "kart")
-        b.pressed.connect(_open_tab.bind(str(item[1])))
-        top_row.add_child(b)
+        var nav_button: Button = Button.new()
+        nav_button.text = str(item[0])
+        nav_button.custom_minimum_size = Vector2(82,38)
+        _style_button(nav_button,str(item[1]) == "kart")
+        nav_button.pressed.connect(_open_tab.bind(str(item[1])))
+        top_row.add_child(nav_button)
 
     var right_space: Control = Control.new()
     right_space.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     top_row.add_child(right_space)
 
+    var currency_panel: PanelContainer = PanelContainer.new()
+    currency_panel.add_theme_stylebox_override("panel",_panel(Color(0.050,0.038,0.010,0.90),Color(0.58,0.40,0.08,0.95),8))
+    top_row.add_child(currency_panel)
+
+    var currency_row: HBoxContainer = HBoxContainer.new()
+    currency_row.add_theme_constant_override("separation",7)
+    currency_panel.add_child(currency_row)
+
     var gold_icon: Label = Label.new()
-    gold_icon.text = "●"
-    gold_icon.modulate = Color(1.0,0.70,0.06)
-    gold_icon.add_theme_font_size_override("font_size",23)
-    top_row.add_child(gold_icon)
+    gold_icon.text = "◆"
+    gold_icon.modulate = Color(1.0,0.73,0.12)
+    gold_icon.add_theme_font_size_override("font_size",18)
+    currency_row.add_child(gold_icon)
 
     gold_label = Label.new()
-    gold_label.add_theme_font_size_override("font_size",21)
-    gold_label.modulate = Color(0.38,0.28,0.04)
-    top_row.add_child(gold_label)
+    gold_label.add_theme_font_size_override("font_size",17)
+    gold_label.modulate = Color(1.0,0.87,0.46)
+    currency_row.add_child(gold_label)
 
-    # Main area: huge 3D plaza showroom + compact management panel.
+    # Main: showroom dominates, right side becomes a glass management deck.
     var main: HBoxContainer = HBoxContainer.new()
     main.anchor_left = 0.0
     main.anchor_right = 1.0
     main.anchor_top = 0.0
     main.anchor_bottom = 1.0
-    main.offset_left = 0.0
-    main.offset_right = 0.0
-    main.offset_top = 58.0
-    main.offset_bottom = -54.0
-    main.add_theme_constant_override("separation",0)
+    main.offset_left = 7.0
+    main.offset_top = 72.0
+    main.offset_bottom = -66.0
+    main.add_theme_constant_override("separation",12)
     root.add_child(main)
 
     var show_panel: PanelContainer = PanelContainer.new()
     show_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     show_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    show_panel.add_theme_stylebox_override("panel",_panel(Color(0.70,0.86,0.94,1.0),Color(0.70,0.82,0.90,1.0),0))
+    show_panel.add_theme_stylebox_override("panel",_panel(Color(0.008,0.011,0.017,1.0),Color(0.19,0.025,0.035,1.0),0))
     main.add_child(show_panel)
 
     var show_v: VBoxContainer = VBoxContainer.new()
@@ -185,7 +238,7 @@ func _build_ui() -> void:
     preview_container.stretch = true
     preview_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
     preview_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    preview_container.custom_minimum_size = Vector2(720,520)
+    preview_container.custom_minimum_size = Vector2(760,540)
     preview_container.gui_input.connect(_on_preview_input)
     show_v.add_child(preview_container)
 
@@ -196,24 +249,51 @@ func _build_ui() -> void:
     preview_container.add_child(preview_viewport)
     _build_preview_world()
 
-    # Selected machine plate, kept small like a racing lobby nameplate.
+    # Upper-left showroom status.
+    var spec_plate: PanelContainer = PanelContainer.new()
+    spec_plate.anchor_left = 0.025
+    spec_plate.anchor_right = 0.025
+    spec_plate.anchor_top = 0.14
+    spec_plate.anchor_bottom = 0.14
+    spec_plate.offset_right = 240
+    spec_plate.offset_bottom = 60
+    spec_plate.add_theme_stylebox_override("panel",_panel(Color(0.010,0.014,0.022,0.78),Color(0.44,0.045,0.055,0.82),6))
+    root.add_child(spec_plate)
+
+    var spec_box: VBoxContainer = VBoxContainer.new()
+    spec_box.add_theme_constant_override("separation",-2)
+    spec_plate.add_child(spec_box)
+
+    var spec_top: Label = Label.new()
+    spec_top.text = "SELECTED MACHINE"
+    spec_top.add_theme_font_size_override("font_size",10)
+    spec_top.modulate = Color(0.84,0.18,0.20)
+    spec_box.add_child(spec_top)
+
+    var spec_sub: Label = Label.new()
+    spec_sub.text = "SHOWROOM / PERFORMANCE VIEW"
+    spec_sub.add_theme_font_size_override("font_size",11)
+    spec_sub.modulate = Color(0.62,0.68,0.76)
+    spec_box.add_child(spec_sub)
+
+    # Machine name plate.
     var name_plate: PanelContainer = PanelContainer.new()
     name_plate.anchor_left = 0.5
     name_plate.anchor_right = 0.5
-    name_plate.anchor_top = 0.18
-    name_plate.anchor_bottom = 0.18
-    name_plate.offset_left = -165
-    name_plate.offset_right = 165
-    name_plate.offset_top = -20
-    name_plate.offset_bottom = 26
-    name_plate.add_theme_stylebox_override("panel",_panel(Color(0.08,0.12,0.17,0.68),Color(0.72,0.84,0.93,0.65),3))
+    name_plate.anchor_top = 0.17
+    name_plate.anchor_bottom = 0.17
+    name_plate.offset_left = -230
+    name_plate.offset_right = 230
+    name_plate.offset_top = -24
+    name_plate.offset_bottom = 28
+    name_plate.add_theme_stylebox_override("panel",_panel(Color(0.010,0.012,0.018,0.82),Color(0.78,0.06,0.08,0.86),6))
     root.add_child(name_plate)
 
     selected_label_center = Label.new()
     selected_label_center.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     selected_label_center.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-    selected_label_center.add_theme_font_size_override("font_size",17)
-    selected_label_center.modulate = Color(0.98,0.99,1.0)
+    selected_label_center.add_theme_font_size_override("font_size",18)
+    selected_label_center.modulate = Color(0.98,0.985,1.0)
     name_plate.add_child(selected_label_center)
     selected_label = selected_label_center
 
@@ -222,73 +302,85 @@ func _build_ui() -> void:
     description_label.anchor_right = 0.5
     description_label.anchor_top = 1.0
     description_label.anchor_bottom = 1.0
-    description_label.offset_left = -280
-    description_label.offset_right = 280
-    description_label.offset_top = -92
-    description_label.offset_bottom = -66
+    description_label.offset_left = -330
+    description_label.offset_right = 220
+    description_label.offset_top = -108
+    description_label.offset_bottom = -80
     description_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    description_label.modulate = Color(0.08,0.12,0.18,0.88)
+    description_label.add_theme_font_size_override("font_size",13)
+    description_label.modulate = Color(0.68,0.73,0.82,0.92)
     root.add_child(description_label)
 
-    # Compact management panel on the right; the world remains visible behind it.
     var content_panel: PanelContainer = PanelContainer.new()
-    content_panel.custom_minimum_size = Vector2(355,0)
+    content_panel.custom_minimum_size = Vector2(382,0)
     content_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    content_panel.add_theme_stylebox_override("panel",_panel(Color(0.015,0.035,0.055,0.88),Color(0.18,0.56,0.78,0.72),0))
+    content_panel.add_theme_stylebox_override("panel",_panel(Color(0.012,0.016,0.025,0.97),Color(0.25,0.035,0.045,0.92),0))
     main.add_child(content_panel)
 
     var content_margin: MarginContainer = MarginContainer.new()
-    content_margin.add_theme_constant_override("margin_left",13)
-    content_margin.add_theme_constant_override("margin_right",13)
-    content_margin.add_theme_constant_override("margin_top",12)
-    content_margin.add_theme_constant_override("margin_bottom",70)
+    content_margin.add_theme_constant_override("margin_left",16)
+    content_margin.add_theme_constant_override("margin_right",16)
+    content_margin.add_theme_constant_override("margin_top",18)
+    content_margin.add_theme_constant_override("margin_bottom",72)
     content_panel.add_child(content_margin)
 
     content_root = VBoxContainer.new()
-    content_root.add_theme_constant_override("separation",8)
+    content_root.add_theme_constant_override("separation",9)
     content_margin.add_child(content_root)
 
+    var section_tag: Label = Label.new()
+    section_tag.text = "GARAGE CONTROL"
+    section_tag.add_theme_font_size_override("font_size",10)
+    section_tag.modulate = Color(0.72,0.16,0.18)
+    content_root.add_child(section_tag)
+
     tab_title = Label.new()
-    tab_title.add_theme_font_size_override("font_size",22)
-    tab_title.modulate = Color(0.42,0.88,1.0)
+    tab_title.add_theme_font_size_override("font_size",24)
+    tab_title.modulate = Color(0.95,0.96,0.99)
     content_root.add_child(tab_title)
 
-    # Bottom control strip.
+    var divider: HSeparator = HSeparator.new()
+    divider.modulate = Color(0.38,0.055,0.065,0.75)
+    content_root.add_child(divider)
+
+    # Bottom status strip.
     var bottom: PanelContainer = PanelContainer.new()
     bottom.anchor_left = 0.0
     bottom.anchor_right = 1.0
     bottom.anchor_top = 1.0
     bottom.anchor_bottom = 1.0
-    bottom.offset_top = -54
-    bottom.add_theme_stylebox_override("panel",_panel(Color(0.96,0.98,1.0,0.97),Color(0.72,0.82,0.90,0.92),0))
+    bottom.offset_left = 7.0
+    bottom.offset_top = -66
+    bottom.add_theme_stylebox_override("panel",_panel(Color(0.010,0.014,0.022,0.985),Color(0.16,0.025,0.035,0.98),0))
     root.add_child(bottom)
+
+    mode_label = Label.new()
+    mode_label.anchor_left = 0.0
+    mode_label.anchor_top = 1.0
+    mode_label.anchor_bottom = 1.0
+    mode_label.offset_left = 285
+    mode_label.offset_right = 520
+    mode_label.offset_top = -52
+    mode_label.offset_bottom = -14
+    mode_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    mode_label.add_theme_font_size_override("font_size",12)
+    mode_label.modulate = Color(0.68,0.74,0.82)
+    root.add_child(mode_label)
 
     result_label = Label.new()
     result_label.anchor_left = 0.0
     result_label.anchor_right = 1.0
     result_label.anchor_top = 1.0
     result_label.anchor_bottom = 1.0
-    result_label.offset_left = 18
-    result_label.offset_right = -290
-    result_label.offset_top = -46
-    result_label.offset_bottom = -12
-    result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    result_label.offset_left = 520
+    result_label.offset_right = -28
+    result_label.offset_top = -52
+    result_label.offset_bottom = -14
+    result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
     result_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-    result_label.add_theme_font_size_override("font_size",15)
-    result_label.modulate = Color(0.12,0.18,0.24)
+    result_label.add_theme_font_size_override("font_size",12)
+    result_label.modulate = Color(0.56,0.62,0.70)
     root.add_child(result_label)
-
-    mode_label = Label.new()
-    mode_label.anchor_left = 0.0
-    mode_label.anchor_top = 1.0
-    mode_label.anchor_bottom = 1.0
-    mode_label.offset_left = 16
-    mode_label.offset_right = 230
-    mode_label.offset_top = -47
-    mode_label.offset_bottom = -12
-    mode_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-    mode_label.modulate = Color(0.14,0.30,0.44)
-    root.add_child(mode_label)
 
     network_status_label = Label.new()
     network_status_label.visible = false
@@ -300,21 +392,21 @@ func _build_ui() -> void:
     root.add_child(ip_edit)
 
     start_button = Button.new()
-    start_button.text = "게임 시작  ▶"
+    start_button.text = "START RACE   ▶"
     start_button.anchor_left = 0.0
     start_button.anchor_right = 0.0
     start_button.anchor_top = 1.0
     start_button.anchor_bottom = 1.0
-    start_button.offset_left = 20
-    start_button.offset_right = 260
-    start_button.offset_top = -112
-    start_button.offset_bottom = -62
-    start_button.add_theme_font_size_override("font_size",20)
-    var start_normal: StyleBoxFlat = _panel(Color(1.0,0.76,0.04,0.98),Color(1.0,0.90,0.32,1.0),2)
-    var start_hover: StyleBoxFlat = _panel(Color(1.0,0.84,0.10,1.0),Color(1.0,0.96,0.54,1.0),2)
-    start_button.add_theme_stylebox_override("normal",start_normal)
-    start_button.add_theme_stylebox_override("hover",start_hover)
-    start_button.add_theme_color_override("font_color",Color(0.08,0.10,0.13))
+    start_button.offset_left = 22
+    start_button.offset_right = 268
+    start_button.offset_top = -126
+    start_button.offset_bottom = -76
+    start_button.add_theme_font_size_override("font_size",19)
+    start_button.add_theme_stylebox_override("normal",_panel(Color(0.55,0.020,0.030,0.99),Color(0.98,0.13,0.15,1.0),6))
+    start_button.add_theme_stylebox_override("hover",_panel(Color(0.76,0.024,0.034,1.0),Color(1.0,0.35,0.37,1.0),6))
+    start_button.add_theme_stylebox_override("pressed",_panel(Color(0.36,0.010,0.018,1.0),Color(1.0,0.10,0.12,1.0),6))
+    start_button.add_theme_color_override("font_color",Color.WHITE)
+    start_button.add_theme_color_override("font_hover_color",Color.WHITE)
     start_button.pressed.connect(_on_start_pressed)
     root.add_child(start_button)
 
@@ -384,70 +476,103 @@ func _build_preview_world() -> void:
     var env_node: WorldEnvironment = WorldEnvironment.new()
     var env: Environment = Environment.new()
     env.background_mode = Environment.BG_COLOR
-    env.background_color = Color(0.60,0.84,0.95)
+    env.background_color = Color(0.005,0.007,0.011)
     env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-    env.ambient_light_color = Color(0.92,0.96,1.0)
-    env.ambient_light_energy = 1.15
+    env.ambient_light_color = Color(0.20,0.23,0.30)
+    env.ambient_light_energy = 0.72
+    env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
     env_node.environment = env
     preview_viewport.add_child(env_node)
 
-    var sun: DirectionalLight3D = DirectionalLight3D.new()
-    sun.rotation_degrees = Vector3(-52,-25,0)
-    sun.light_energy = 1.75
-    sun.shadow_enabled = true
-    preview_viewport.add_child(sun)
+    # Main white key light.
+    var key: DirectionalLight3D = DirectionalLight3D.new()
+    key.rotation_degrees = Vector3(-48,-32,0)
+    key.light_energy = 1.45
+    key.light_color = Color(0.88,0.91,1.0)
+    key.shadow_enabled = true
+    preview_viewport.add_child(key)
 
-    var fill: OmniLight3D = OmniLight3D.new()
-    fill.position = Vector3(-3.5,3.0,-3.0)
-    fill.light_energy = 2.2
-    fill.omni_range = 13.0
-    fill.light_color = Color(0.70,0.86,1.0)
-    preview_viewport.add_child(fill)
+    # Red rim light and cool fill sell the premium garage without many lights.
+    var red_rim: OmniLight3D = OmniLight3D.new()
+    red_rim.position = Vector3(4.5,2.2,1.2)
+    red_rim.light_energy = 3.0
+    red_rim.omni_range = 10.0
+    red_rim.light_color = Color(1.0,0.035,0.045)
+    red_rim.shadow_enabled = false
+    preview_viewport.add_child(red_rim)
 
-    # Wide asphalt plaza similar in composition to a kart-racing lobby.
-    var plaza: MeshInstance3D = MeshInstance3D.new()
-    var plaza_mesh: PlaneMesh = PlaneMesh.new()
-    plaza_mesh.size = Vector2(38,26)
-    plaza.mesh = plaza_mesh
-    plaza.position.y = -0.03
-    plaza.material_override = _preview_mat(Color(0.17,0.20,0.22),0.02,0.86)
-    preview_viewport.add_child(plaza)
+    var cool_fill: OmniLight3D = OmniLight3D.new()
+    cool_fill.position = Vector3(-4.2,2.8,-2.5)
+    cool_fill.light_energy = 1.8
+    cool_fill.omni_range = 11.0
+    cool_fill.light_color = Color(0.28,0.42,0.72)
+    cool_fill.shadow_enabled = false
+    preview_viewport.add_child(cool_fill)
 
-    _preview_box(Vector3(0,0.08,5.25),Vector3(38,0.18,2.0),_preview_mat(Color(0.88,0.90,0.90),0.0,0.82))
-    _preview_box(Vector3(0,0.20,6.0),Vector3(38,0.22,0.28),_preview_mat(Color(0.76,0.80,0.82),0.0,0.72))
+    # Glossy black garage floor.
+    var floor: MeshInstance3D = MeshInstance3D.new()
+    var floor_mesh: PlaneMesh = PlaneMesh.new()
+    floor_mesh.size = Vector2(34,24)
+    floor.mesh = floor_mesh
+    floor.position.y = -0.035
+    floor.material_override = _preview_mat(Color(0.018,0.021,0.028),0.48,0.20)
+    preview_viewport.add_child(floor)
 
-    # Small colorful town background.
-    var house_x: Array[float] = [-8.0,-4.2,0.0,4.4,8.2]
-    for i in range(house_x.size()):
-        var x: float = house_x[i]
-        var h: float = 3.2 + float(i%3)*0.55
-        var body_color: Color = [
-            Color(0.88,0.86,0.78),
-            Color(0.82,0.90,0.92),
-            Color(0.95,0.88,0.82),
-            Color(0.86,0.92,0.84),
-            Color(0.90,0.84,0.88)
-        ][i]
-        _preview_box(Vector3(x,h*0.5,8.4),Vector3(3.1,h,2.5),_preview_mat(body_color,0.0,0.90))
-        var roof: MeshInstance3D = _preview_box(Vector3(x,h+0.45,8.4),Vector3(3.6,0.85,2.9),_preview_mat(Color(0.56,0.18+0.04*float(i%2),0.12),0.0,0.84))
-        roof.rotation_degrees.z = 4.0 if i%2==0 else -4.0
+    # Circular display platform.
+    var platform: MeshInstance3D = MeshInstance3D.new()
+    var platform_mesh: CylinderMesh = CylinderMesh.new()
+    platform_mesh.top_radius = 3.55
+    platform_mesh.bottom_radius = 3.75
+    platform_mesh.height = 0.22
+    platform_mesh.radial_segments = 48
+    platform.mesh = platform_mesh
+    platform.position = Vector3(0.25,0.08,0.30)
+    platform.material_override = _preview_mat(Color(0.045,0.050,0.060),0.72,0.16)
+    preview_viewport.add_child(platform)
 
-    for p in [Vector3(-6.6,0,4.9),Vector3(-2.8,0,5.1),Vector3(3.0,0,5.0),Vector3(6.8,0,5.1)]:
-        _preview_tree(p,Color(0.95,0.54,0.68))
+    var ring: MeshInstance3D = MeshInstance3D.new()
+    var ring_mesh: TorusMesh = TorusMesh.new()
+    ring_mesh.inner_radius = 3.15
+    ring_mesh.outer_radius = 3.28
+    ring_mesh.rings = 32
+    ring_mesh.ring_segments = 8
+    ring.mesh = ring_mesh
+    ring.position = Vector3(0.25,0.205,0.30)
+    var ring_mat: StandardMaterial3D = _preview_mat(Color(0.70,0.018,0.026),0.65,0.10)
+    ring_mat.emission_enabled = true
+    ring_mat.emission = Color(0.75,0.010,0.018)
+    ring_mat.emission_energy_multiplier = 2.7
+    ring.material_override = ring_mat
+    preview_viewport.add_child(ring)
 
-    for p in [Vector3(-8.6,0,3.9),Vector3(-4.7,0,4.0),Vector3(4.7,0,4.0),Vector3(8.6,0,3.9)]:
-        _preview_lamp(p)
+    # Back wall with technical panels.
+    _preview_box(Vector3(0,3.2,7.8),Vector3(20.0,6.4,0.45),_preview_mat(Color(0.018,0.022,0.032),0.60,0.30))
+    _preview_box(Vector3(0,5.75,7.48),Vector3(10.5,0.10,0.10),ring_mat)
+    _preview_box(Vector3(-6.6,3.0,7.42),Vector3(0.09,4.2,0.12),ring_mat)
+    _preview_box(Vector3(6.6,3.0,7.42),Vector3(0.09,4.2,0.12),ring_mat)
 
-    # Planters / benches make the scene feel inhabited without stealing focus.
-    for x in [-5.2,5.2]:
-        _preview_box(Vector3(float(x),0.32,4.35),Vector3(2.2,0.55,0.75),_preview_mat(Color(0.64,0.48,0.32),0.0,0.88))
-        _preview_box(Vector3(float(x),0.72,4.35),Vector3(1.85,0.32,0.65),_preview_mat(Color(0.12,0.46,0.18),0.0,0.92))
+    var panel_mat: StandardMaterial3D = _preview_mat(Color(0.032,0.038,0.052),0.55,0.25)
+    for x in [-6.0,-3.0,3.0,6.0]:
+        _preview_box(Vector3(float(x),3.0,7.36),Vector3(2.1,2.6,0.10),panel_mat)
+
+    # Ceiling light bars.
+    var white_strip: StandardMaterial3D = _preview_mat(Color(0.86,0.90,1.0),0.05,0.10)
+    white_strip.emission_enabled = true
+    white_strip.emission = Color(0.70,0.78,1.0)
+    white_strip.emission_energy_multiplier = 2.0
+    for x in [-4.5,0.0,4.5]:
+        _preview_box(Vector3(float(x),5.6,0.8),Vector3(2.8,0.08,0.16),white_strip)
+
+    # Small side podiums make the space feel authored but stay cheap.
+    var side_mat: StandardMaterial3D = _preview_mat(Color(0.030,0.034,0.044),0.45,0.28)
+    _preview_box(Vector3(-6.0,0.55,2.9),Vector3(2.0,1.1,2.0),side_mat)
+    _preview_box(Vector3(6.0,0.55,2.9),Vector3(2.0,1.1,2.0),side_mat)
 
     var camera: Camera3D = Camera3D.new()
-    camera.fov = 39.0
-    camera.position = Vector3(0.0,2.65,-10.6)
+    camera.fov = 42.0
+    camera.position = Vector3(0.0,2.15,-10.8)
     preview_viewport.add_child(camera)
-    camera.look_at(Vector3(0.0,0.95,0.45),Vector3.UP)
+    camera.look_at(Vector3(0.15,0.78,0.32),Vector3.UP)
     camera.make_current()
 
 func _clear_content() -> void:
@@ -715,15 +840,15 @@ func _spawn_preview(id: String) -> void:
     preview_kart.setup_preview(id)
     preview_kart.apply_upgrade_level(get_upgrade_level(id))
     preview_kart.apply_equipment(get_equipped_equipment())
-    preview_kart.position = Vector3(1.25,0.15,0.15)
-    preview_kart.rotation.y = deg_to_rad(-10.0)
-    preview_kart.scale = Vector3(1.12,1.12,1.12)
+    preview_kart.position = Vector3(0.65,0.22,0.15)
+    preview_kart.rotation.y = deg_to_rad(-14.0)
+    preview_kart.scale = Vector3(1.32,1.32,1.32)
 
     preview_character = _create_preview_character(id)
     preview_viewport.add_child(preview_character)
-    preview_character.position = Vector3(-1.35,0.0,0.55)
-    preview_character.rotation.y = deg_to_rad(7.0)
-    preview_character.scale = Vector3(1.18,1.18,1.18)
+    preview_character.position = Vector3(-2.45,0.08,0.85)
+    preview_character.rotation.y = deg_to_rad(12.0)
+    preview_character.scale = Vector3(0.98,0.98,0.98)
     preview_auto_rotate = true
 
 func _create_preview_character(id: String) -> Node3D:
@@ -846,9 +971,9 @@ func _create_preview_character(id: String) -> Node3D:
 func _process(delta: float) -> void:
     if preview_auto_rotate and not preview_dragging:
         if preview_kart and is_instance_valid(preview_kart):
-            preview_kart.rotate_y(delta*0.20)
+            preview_kart.rotate_y(delta*0.12)
         if preview_character and is_instance_valid(preview_character):
-            preview_character.position.y = sin(float(Time.get_ticks_msec())*0.0022)*0.025
+            preview_character.position.y = 0.08+sin(float(Time.get_ticks_msec())*0.0018)*0.018
 
 func _on_preview_input(event: InputEvent) -> void:
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
