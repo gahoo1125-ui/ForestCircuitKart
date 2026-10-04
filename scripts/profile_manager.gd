@@ -15,11 +15,11 @@ static func default_profile() -> Dictionary:
         "selected_kart":"rookie",
         "owned_karts":[
             "rookie","koala_sprinter","bamboo_koala_gt","koala_drift_x","phantom",
-            "yanghyunhoo_turbo","yanghyunhoo_blaze","koala_hyunhoo_mix","gold"
+            "yanghyunhoo_turbo","yanghyunhoo_blaze","koala_hyunhoo_mix","running_seala","gold"
         ],
         "kart_levels":{
             "rookie":0,"koala_sprinter":0,"bamboo_koala_gt":0,"koala_drift_x":0,"phantom":0,
-            "yanghyunhoo_turbo":0,"yanghyunhoo_blaze":0,"koala_hyunhoo_mix":0,"gold":0
+            "yanghyunhoo_turbo":0,"yanghyunhoo_blaze":0,"koala_hyunhoo_mix":0,"running_seala":0,"gold":0
         },
         "owned_equipment":["comfort_tire"],
         "equipped_equipment":"comfort_tire",
@@ -62,6 +62,18 @@ static func load_profile() -> Dictionary:
             loaded[key] = base[key]
 
     loaded["player_name"] = sanitize_nickname(str(loaded.get("player_name","")))
+
+    # v71 migration: make the new running koala available on existing local profiles.
+    var owned: Array = loaded.get("owned_karts",[]) as Array
+    if not owned.has("running_seala"):
+        owned.append("running_seala")
+    loaded["owned_karts"] = owned
+
+    var levels: Dictionary = loaded.get("kart_levels",{}) as Dictionary
+    if not levels.has("running_seala"):
+        levels["running_seala"] = 0
+    loaded["kart_levels"] = levels
+
     return loaded
 
 static func create_or_update_account(profile: Dictionary, nickname: String) -> Dictionary:

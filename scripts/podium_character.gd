@@ -4,6 +4,7 @@ class_name PodiumCharacter
 var body_color: Color = Color(0.3,0.7,1.0)
 var anim_time: float = 0.0
 var dragon_armor: bool = false
+var koala_mode: bool = false
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -16,6 +17,10 @@ func set_body_color(value: Color) -> void:
 
 func set_dragon_armor(value: bool) -> void:
     dragon_armor = value
+    queue_redraw()
+
+func set_koala_mode(value: bool) -> void:
+    koala_mode = value
     queue_redraw()
 
 func _process(delta: float) -> void:
@@ -31,6 +36,37 @@ func _draw() -> void:
     var dark: Color = Color(0.04,0.045,0.055)
     var glow: Color = body_color.lightened(0.18)
     var wave: float = sin(anim_time * 7.0) * 5.0
+
+    if koala_mode:
+        var fur: Color = Color(0.44,0.47,0.50)
+        var fur_light: Color = Color(0.72,0.73,0.72)
+        var nose: Color = Color(0.035,0.04,0.045)
+        var red: Color = Color(0.90,0.055,0.065)
+
+        # Koala ears/head.
+        draw_circle(c + Vector2(-18,-54),14.0,fur_light)
+        draw_circle(c + Vector2(18,-54),14.0,fur_light)
+        draw_circle(c + Vector2(0,-45),22.0,fur)
+        draw_circle(c + Vector2(-7,-49),2.1,nose)
+        draw_circle(c + Vector2(7,-49),2.1,nose)
+        draw_circle(c + Vector2(0,-41),5.0,nose)
+        draw_arc(c + Vector2(0,-57),18.5,PI+0.15,TAU-0.15,22,red,4.0,true)
+
+        # Compact koala torso.
+        draw_circle(c + Vector2(0,-4),20.0,fur)
+        draw_circle(c + Vector2(0,-2),12.0,fur_light)
+
+        # Victory arms with a strong runner pose.
+        draw_line(c + Vector2(-10,-14),c + Vector2(-35,-52-wave),fur,12.0,true)
+        draw_line(c + Vector2(10,-14),c + Vector2(35,-52+wave),fur,12.0,true)
+        draw_circle(c + Vector2(-36,-55-wave),6.5,fur_light)
+        draw_circle(c + Vector2(36,-55+wave),6.5,fur_light)
+
+        draw_line(c + Vector2(-7,10),c + Vector2(-18,48),fur,13.0,true)
+        draw_line(c + Vector2(7,10),c + Vector2(18,48),fur,13.0,true)
+        draw_circle(c + Vector2(-19,49),7.0,nose)
+        draw_circle(c + Vector2(19,49),7.0,nose)
+        return
 
     if dragon_armor:
         var armor_black: Color = Color(0.025,0.03,0.04)

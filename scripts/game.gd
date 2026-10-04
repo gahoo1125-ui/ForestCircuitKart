@@ -55,8 +55,9 @@ var network_karts: Dictionary = {}
 
 const CPU_DRIVER_NAMES: Array[String] = ["NOVA","RIN","BLAZE","MIRA","ZERO"]
 var net_send_accum: float = 0.0
+var ranking_update_accum: float = 0.0
 
-var kart_order: Array[String] = ["rookie","koala_sprinter","bamboo_koala_gt","koala_drift_x","phantom","yanghyunhoo_turbo","yanghyunhoo_blaze","koala_hyunhoo_mix","gold"]
+var kart_order: Array[String] = ["rookie","koala_sprinter","bamboo_koala_gt","koala_drift_x","phantom","yanghyunhoo_turbo","yanghyunhoo_blaze","koala_hyunhoo_mix","running_seala","gold"]
 
 func _ready() -> void:
     _ensure_input()
@@ -81,7 +82,10 @@ func _process(delta: float) -> void:
             _finalize_race_after_countdown()
 
     if hud and is_instance_valid(hud) and track:
-        hud.update_rankings(race_karts,track,kart_data,player)
+        ranking_update_accum += delta
+        if ranking_update_accum >= 0.12:
+            ranking_update_accum = 0.0
+            hud.update_rankings(race_karts,track,kart_data,player)
 
     if selected_mode == "split" and split_cam1 and split_cam2 and player and player2:
         _follow_camera(split_cam1,player,delta)
@@ -1000,6 +1004,7 @@ func _make_podium_card(rank_number: int, entry: Dictionary, is_player: bool, fir
     var character: PodiumCharacter = PodiumCharacter.new()
     character.custom_minimum_size = Vector2(150,120)
     character.set_body_color(character_color)
+    character.set_koala_mode(kart_id_value == "running_seala")
     character.set_dragon_armor(kart_id_value == "gold")
     v.add_child(character)
 

@@ -48,21 +48,21 @@ var was_airborne_last_frame: bool = false
 
 # Fast, readable arcade handling.
 const ARCADE_GRIP_MULT: float = 1.56
-const ARCADE_DRIFT_GRIP_MULT: float = 0.31
+const ARCADE_DRIFT_GRIP_MULT: float = 0.255
 const STEER_RESPONSE_LOW: float = 13.0
 const STEER_RESPONSE_HIGH: float = 8.6
 const DRIFT_STEER_RESPONSE: float = 12.5
-const DRIFT_RECOVERY_RESPONSE: float = 14.5
+const DRIFT_RECOVERY_RESPONSE: float = 9.6
 const THROTTLE_RESPONSE: float = 12.5
 const COLLISION_SPEED_KEEP_WALL: float = 0.58
 const COLLISION_SPEED_KEEP_KART: float = 0.84
 const DRIFT_MIN_SPEED: float = 8.5
 const DRIFT_LONG_TIME: float = 0.72
-const DRIFT_MAX_SLIP_DEG: float = 27.0
-const DRIFT_SHORT_SLIP_DEG: float = 12.0
-const CORNER_SLIP_MAX_DEG: float = 10.5
-const CORNER_SLIP_RESPONSE: float = 5.8
-const CORNER_SLIP_RECOVERY: float = 8.0
+const DRIFT_MAX_SLIP_DEG: float = 34.0
+const DRIFT_SHORT_SLIP_DEG: float = 15.0
+const CORNER_SLIP_MAX_DEG: float = 12.5
+const CORNER_SLIP_RESPONSE: float = 4.9
+const CORNER_SLIP_RECOVERY: float = 6.2
 
 # Lightweight pooled red drift marks for the endgame kart.
 const RED_DRIFT_MARK_POOL_SIZE: int = 28
@@ -99,6 +99,13 @@ var red_drift_has_previous: bool = false
 var red_drift_prev_left: Vector3 = Vector3.ZERO
 var red_drift_prev_right: Vector3 = Vector3.ZERO
 var gold_red_boost_visual_state: bool = false
+
+var running_koala_root: Node3D
+var running_koala_left_arm: Node3D
+var running_koala_right_arm: Node3D
+var running_koala_left_leg: Node3D
+var running_koala_right_leg: Node3D
+var running_koala_anim_time: float = 0.0
 var remote_position: Vector3 = Vector3.ZERO
 var remote_yaw: float = 0.0
 var remote_speed: float = 0.0
@@ -187,6 +194,10 @@ func _build_kart() -> void:
     if kart_id == "gold":
         shape.size = Vector3(1.82,0.68,3.08)
         collider.position.y = 0.34
+    elif kart_id == "running_seala":
+        # Upright running koala: narrower footprint than a kart, but still fair.
+        shape.size = Vector3(1.18,1.55,1.30)
+        collider.position.y = 0.78
     else:
         # Slightly smaller kart footprint to match the wider arcade track scale.
         shape.size = Vector3(1.58,0.72,2.38)
@@ -217,6 +228,8 @@ func _build_kart() -> void:
         if not gold_external_model_loaded:
             _build_gold_foundation(root,body_mat,dark)
             _build_gold_hypercar(root)
+    elif kart_id == "running_seala":
+        _build_running_seala(root)
     else:
         body_mat.albedo_color = Color(float(c[0]),float(c[1]),float(c[2]))
         body_mat.metallic = 0.22
@@ -235,6 +248,172 @@ func _build_kart() -> void:
             _build_gold_dragon(root)
         _build_gold_boost()
         # Heavy dragon-shaped boost VFX intentionally disabled for performance.
+
+func _build_running_seala(root: Node3D) -> void:
+    running_koala_root = Node3D.new()
+    running_koala_root.name = "RunningSeala"
+    running_koala_root.position = Vector3(0.0,-0.04,0.05)
+    root.add_child(running_koala_root)
+
+    var fur: StandardMaterial3D = StandardMaterial3D.new()
+    fur.albedo_color = Color(0.42,0.45,0.48)
+    fur.roughness = 0.88
+
+    var fur_light: StandardMaterial3D = StandardMaterial3D.new()
+    fur_light.albedo_color = Color(0.66,0.68,0.68)
+    fur_light.roughness = 0.90
+
+    var dark: StandardMaterial3D = StandardMaterial3D.new()
+    dark.albedo_color = Color(0.035,0.040,0.045)
+    dark.roughness = 0.82
+
+    var accent: StandardMaterial3D = StandardMaterial3D.new()
+    accent.albedo_color = Color(0.78,0.025,0.035)
+    accent.metallic = 0.28
+    accent.roughness = 0.28
+    accent.emission_enabled = true
+    accent.emission = Color(0.20,0.002,0.004)
+    accent.emission_energy_multiplier = 0.65
+
+    # Torso.
+    var torso: MeshInstance3D = MeshInstance3D.new()
+    var torso_mesh: SphereMesh = SphereMesh.new()
+    torso_mesh.radius = 0.52
+    torso_mesh.height = 0.92
+    torso_mesh.radial_segments = 12
+    torso_mesh.rings = 6
+    torso.mesh = torso_mesh
+    torso.scale = Vector3(0.90,1.15,0.72)
+    torso.position = Vector3(0.0,1.02,0.02)
+    torso.material_override = fur
+    running_koala_root.add_child(torso)
+
+    # Belly / racing bib.
+    var belly: MeshInstance3D = MeshInstance3D.new()
+    var belly_mesh: SphereMesh = SphereMesh.new()
+    belly_mesh.radius = 0.34
+    belly_mesh.height = 0.50
+    belly_mesh.radial_segments = 10
+    belly_mesh.rings = 5
+    belly.mesh = belly_mesh
+    belly.scale = Vector3(0.78,1.0,0.34)
+    belly.position = Vector3(0.0,0.98,-0.39)
+    belly.material_override = fur_light
+    running_koala_root.add_child(belly)
+
+    # Head.
+    var head: MeshInstance3D = MeshInstance3D.new()
+    var head_mesh: SphereMesh = SphereMesh.new()
+    head_mesh.radius = 0.48
+    head_mesh.height = 0.84
+    head_mesh.radial_segments = 12
+    head_mesh.rings = 6
+    head.mesh = head_mesh
+    head.scale = Vector3(1.02,0.96,0.88)
+    head.position = Vector3(0.0,1.72,-0.05)
+    head.material_override = fur
+    running_koala_root.add_child(head)
+
+    for side in [-1.0,1.0]:
+        var ear: MeshInstance3D = MeshInstance3D.new()
+        var ear_mesh: SphereMesh = SphereMesh.new()
+        ear_mesh.radius = 0.28
+        ear_mesh.height = 0.40
+        ear_mesh.radial_segments = 10
+        ear_mesh.rings = 5
+        ear.mesh = ear_mesh
+        ear.scale = Vector3(0.92,1.0,0.55)
+        ear.position = Vector3(float(side)*0.43,1.88,0.0)
+        ear.material_override = fur_light
+        running_koala_root.add_child(ear)
+
+        var eye: MeshInstance3D = MeshInstance3D.new()
+        var eye_mesh: SphereMesh = SphereMesh.new()
+        eye_mesh.radius = 0.050
+        eye_mesh.height = 0.075
+        eye.mesh = eye_mesh
+        eye.position = Vector3(float(side)*0.15,1.76,-0.43)
+        eye.material_override = dark
+        running_koala_root.add_child(eye)
+
+    var nose: MeshInstance3D = MeshInstance3D.new()
+    var nose_mesh: SphereMesh = SphereMesh.new()
+    nose_mesh.radius = 0.12
+    nose_mesh.height = 0.18
+    nose.mesh = nose_mesh
+    nose.scale = Vector3(0.90,0.90,0.55)
+    nose.position = Vector3(0.0,1.64,-0.49)
+    nose.material_override = dark
+    running_koala_root.add_child(nose)
+
+    # Red racing headband gives the runner a clear game identity.
+    var band: MeshInstance3D = MeshInstance3D.new()
+    var band_mesh: TorusMesh = TorusMesh.new()
+    band_mesh.inner_radius = 0.43
+    band_mesh.outer_radius = 0.475
+    band_mesh.rings = 20
+    band_mesh.ring_segments = 6
+    band.mesh = band_mesh
+    band.rotation_degrees.x = 90.0
+    band.position = Vector3(0.0,1.86,-0.01)
+    band.material_override = accent
+    running_koala_root.add_child(band)
+
+    # Four articulated limbs. Each limb is one low-poly cylinder node.
+    running_koala_left_arm = _make_seala_limb(running_koala_root,Vector3(-0.50,1.18,-0.02),0.13,0.72,fur,-18.0)
+    running_koala_right_arm = _make_seala_limb(running_koala_root,Vector3(0.50,1.18,-0.02),0.13,0.72,fur,18.0)
+    running_koala_left_leg = _make_seala_limb(running_koala_root,Vector3(-0.25,0.48,0.06),0.16,0.80,dark,-8.0)
+    running_koala_right_leg = _make_seala_limb(running_koala_root,Vector3(0.25,0.48,0.06),0.16,0.80,dark,8.0)
+
+    # Static sprint pose in the showroom.
+    running_koala_left_arm.rotation_degrees.x = 32.0
+    running_koala_right_arm.rotation_degrees.x = -32.0
+    running_koala_left_leg.rotation_degrees.x = -28.0
+    running_koala_right_leg.rotation_degrees.x = 28.0
+
+
+func _make_seala_limb(parent: Node3D, pos: Vector3, radius: float, height: float, material: StandardMaterial3D, z_tilt: float) -> Node3D:
+    var pivot: Node3D = Node3D.new()
+    pivot.position = pos
+    pivot.rotation_degrees.z = z_tilt
+    parent.add_child(pivot)
+
+    var limb: MeshInstance3D = MeshInstance3D.new()
+    var mesh: CylinderMesh = CylinderMesh.new()
+    mesh.top_radius = radius*0.78
+    mesh.bottom_radius = radius
+    mesh.height = height
+    mesh.radial_segments = 7
+    limb.mesh = mesh
+    limb.position = Vector3(0.0,-height*0.42,0.0)
+    limb.material_override = material
+    pivot.add_child(limb)
+    return pivot
+
+
+func _update_running_seala_animation(delta: float) -> void:
+    if kart_id != "running_seala" or running_koala_root == null:
+        return
+
+    var speed_factor: float = clamp(abs(forward_speed)/max(1.0,float(stats.get("max_speed",44.0))),0.0,1.25)
+    if speed_factor < 0.03:
+        running_koala_root.position.y = -0.04
+        return
+
+    running_koala_anim_time += delta*(7.5+speed_factor*8.5)
+    var swing: float = sin(running_koala_anim_time)*44.0*speed_factor
+    var bounce: float = abs(sin(running_koala_anim_time))*0.10*speed_factor
+
+    running_koala_root.position.y = -0.04+bounce
+    if running_koala_left_arm:
+        running_koala_left_arm.rotation_degrees.x = swing
+    if running_koala_right_arm:
+        running_koala_right_arm.rotation_degrees.x = -swing
+    if running_koala_left_leg:
+        running_koala_left_leg.rotation_degrees.x = -swing
+    if running_koala_right_leg:
+        running_koala_right_leg.rotation_degrees.x = swing
+
 
 func _build_cute_kart(root: Node3D, body_mat: StandardMaterial3D, dark: StandardMaterial3D, c: Array) -> void:
     var light_mat: StandardMaterial3D = StandardMaterial3D.new()
@@ -1215,27 +1394,31 @@ func _build_speed_fx() -> void:
     speed_fx_root.visible = false
     add_child(speed_fx_root)
 
-    var streak_mat: StandardMaterial3D = StandardMaterial3D.new()
-    streak_mat.albedo_color = Color(0.82,0.93,1.0)
-    streak_mat.emission_enabled = true
-    streak_mat.emission = Color(0.48,0.78,1.0)
-    streak_mat.emission_energy_multiplier = 1.8
-    streak_mat.roughness = 0.22
+    # CPU/remote/preview karts do not need boost streak meshes.
+    if control_mode != "player1" and control_mode != "player2":
+        return
 
     # Gold/endgame kart uses body glow instead of extra speed-line meshes.
     if kart_id == "gold":
         return
 
-    for i in range(4):
+    var streak_mat: StandardMaterial3D = StandardMaterial3D.new()
+    streak_mat.albedo_color = Color(0.82,0.93,1.0)
+    streak_mat.emission_enabled = true
+    streak_mat.emission = Color(0.48,0.78,1.0)
+    streak_mat.emission_energy_multiplier = 1.5
+    streak_mat.roughness = 0.22
+
+    for i in range(3):
         var streak: MeshInstance3D = MeshInstance3D.new()
         var streak_mesh: BoxMesh = BoxMesh.new()
-        streak_mesh.size = Vector3(0.038,0.038,0.90 + float(i % 2) * 0.24)
+        streak_mesh.size = Vector3(0.035,0.035,0.88 + float(i % 2) * 0.22)
         streak.mesh = streak_mesh
         streak.material_override = streak_mat
         streak.position = Vector3(
-            -0.87 + float(i % 4) * 0.58,
-            0.32 + float(i % 2) * 0.42,
-            1.7 + float(i) * 0.42
+            -0.70 + float(i) * 0.70,
+            0.34 + float(i % 2) * 0.38,
+            1.75 + float(i) * 0.48
         )
         speed_fx_root.add_child(streak)
         speed_streaks.append(streak)
@@ -1582,8 +1765,9 @@ func _physics_process(delta: float) -> void:
         var countersteer: float = max(0.0,-steer_input*drift_direction)
 
         var desired_slip_deg: float = lerp(DRIFT_SHORT_SLIP_DEG,DRIFT_MAX_SLIP_DEG,drift_growth)
-        desired_slip_deg += same_direction*4.0
-        desired_slip_deg -= countersteer*10.0
+        desired_slip_deg += same_direction*6.0
+        # Skilled counter-steering can actively catch the slide.
+        desired_slip_deg -= countersteer*18.0
         desired_slip_deg = clamp(desired_slip_deg,5.0,DRIFT_MAX_SLIP_DEG+4.0)
 
         var desired_slip: float = deg_to_rad(desired_slip_deg)*drift_direction
@@ -1598,6 +1782,9 @@ func _physics_process(delta: float) -> void:
         if abs(forward_speed) > drift_speed_cap:
             forward_speed = move_toward(forward_speed,drift_speed_cap,4.8*delta)
     elif was_drifting:
+        # Drift exit keeps some lateral momentum. Releasing with a large slip
+        # angle creates a snap/rebound; counter-steering before release reduces it.
+        corner_slip_angle += drift_slip_angle*0.58
         drift_chain_timer = 0.90
         if drift_time >= DRIFT_LONG_TIME:
             forward_speed += min(1.6,base_max_speed*0.04)
@@ -1815,6 +2002,7 @@ func _physics_process(delta: float) -> void:
         track_idx = int(info["index"])
 
     _update_red_drift_marks(delta,drifting)
+    _update_running_seala_animation(delta)
 
     last_motion_position = global_position
     _update_lap(track_idx)

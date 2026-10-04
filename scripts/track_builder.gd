@@ -1554,15 +1554,34 @@ func spawn_transform() -> Transform3D:
     return spawn_transform_at(0,0.0)
 
 func nearest_track_info(world_pos: Vector3) -> Dictionary:
-    var best_i: int = 0
-    var best_d: float = INF
-    for i in range(sample_points.size()):
+    var count: int = sample_points.size()
+    if count == 0:
+        return {"index":0,"point":Vector3.ZERO,"tangent":Vector3.FORWARD,"right":Vector3.RIGHT,"distance":0.0}
+
+    # Two-stage nearest-point lookup: coarse scan then exact local refinement.
+    # This keeps the exact result while cutting most per-frame distance checks.
+    var coarse_step: int = 8
+    var coarse_i: int = 0
+    var coarse_d: float = INF
+    for i in range(0,count,coarse_step):
+        var dx: float = world_pos.x-sample_points[i].x
+        var dz: float = world_pos.z-sample_points[i].z
+        var d: float = dx*dx+dz*dz
+        if d < coarse_d:
+            coarse_d = d
+            coarse_i = i
+
+    var best_i: int = coarse_i
+    var best_d: float = coarse_d
+    for offset in range(-coarse_step,coarse_step+1):
+        var i: int = posmod(coarse_i+offset,count)
         var dx: float = world_pos.x-sample_points[i].x
         var dz: float = world_pos.z-sample_points[i].z
         var d: float = dx*dx+dz*dz
         if d < best_d:
             best_d = d
             best_i = i
+
     var tangent: Vector3 = sample_tangents[best_i]
     var right: Vector3 = Vector3(-tangent.z,0.0,tangent.x)
     return {"index":best_i,"point":sample_points[best_i],"tangent":tangent,"right":right,"distance":sqrt(best_d)}

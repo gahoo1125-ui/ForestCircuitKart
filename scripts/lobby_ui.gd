@@ -256,7 +256,7 @@ func _build_ui() -> void:
 
     preview_viewport = SubViewport.new()
     preview_viewport.size = Vector2i(960,600)
-    preview_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+    preview_viewport.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
     preview_viewport.own_world_3d = true
     preview_container.add_child(preview_viewport)
     _build_preview_world()
@@ -979,7 +979,7 @@ func _spawn_preview(id: String) -> void:
     preview_kart.apply_equipment(get_equipped_equipment())
     preview_kart.position = Vector3(0.65,0.22,0.15)
     preview_kart.rotation.y = deg_to_rad(-14.0)
-    preview_kart.scale = Vector3(1.32,1.32,1.32)
+    preview_kart.scale = Vector3(1.42,1.42,1.42) if id == "running_seala" else Vector3(1.32,1.32,1.32)
 
     preview_character = _create_preview_character(id)
     preview_viewport.add_child(preview_character)
@@ -1106,6 +1106,8 @@ func _create_preview_character(id: String) -> Node3D:
     return root
 
 func _process(delta: float) -> void:
+    if not visible:
+        return
     if preview_auto_rotate and not preview_dragging:
         if preview_kart and is_instance_valid(preview_kart):
             preview_kart.rotate_y(delta*0.12)
@@ -1299,6 +1301,7 @@ func _gacha_pool() -> Array[Dictionary]:
         {"type":"kart","id":"koala_hyunhoo_mix","name":"코알라 × 양현후 하이브리드","rarity":"영웅"},
         {"type":"cosmetic","id":"dragon_cape","name":"드래곤 케이프","rarity":"영웅"},
         {"type":"equipment","id":"gold_wing","name":"골드 윙","rarity":"전설"},
+        {"type":"kart","id":"running_seala","name":"달려라 세알라","rarity":"전설"},
         {"type":"kart","id":"gold","name":"골드 익스피어리언스","rarity":"전설"}
     ]
 
