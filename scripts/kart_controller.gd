@@ -174,6 +174,8 @@ func _build_kart() -> void:
     root.scale = Vector3(0.86,0.86,0.86)
     add_child(root)
 
+    var gold_external_model_loaded: bool = false
+
     var c: Array = stats.get("color",[0.8,0.2,0.2])
     var body_mat: StandardMaterial3D = StandardMaterial3D.new()
     var dark: StandardMaterial3D = StandardMaterial3D.new()
@@ -187,8 +189,10 @@ func _build_kart() -> void:
         dark.metallic = 0.72
         dark.roughness = 0.16
 
-        _build_gold_foundation(root,body_mat,dark)
-        _build_gold_hypercar(root)
+        gold_external_model_loaded = _build_gold_external_model(root)
+        if not gold_external_model_loaded:
+            _build_gold_foundation(root,body_mat,dark)
+            _build_gold_hypercar(root)
     else:
         body_mat.albedo_color = Color(float(c[0]),float(c[1]),float(c[2]))
         body_mat.metallic = 0.22
@@ -203,7 +207,8 @@ func _build_kart() -> void:
     _build_speed_fx()
 
     if kart_id == "gold":
-        _build_gold_dragon(root)
+        if not gold_external_model_loaded:
+            _build_gold_dragon(root)
         _build_gold_boost()
         _build_gold_dragon_flight()
 
@@ -569,6 +574,45 @@ func _gold_led_bar(root: Node3D, pos: Vector3, size: Vector3, rot: Vector3, mat:
     led.rotation_degrees = rot
     led.material_override = mat
     root.add_child(led)
+
+func _build_gold_external_model(root: Node3D) -> bool:
+    # Load the Blender-authored endgame kart from beside the Windows EXE.
+    # This changes visuals only. Physics/collision/handling/stats are untouched.
+    var candidates: Array[String] = [
+        OS.get_executable_path().get_base_dir().path_join("gold_dragon_kart.glb"),
+        ProjectSettings.globalize_path("res://gold_dragon_kart.glb")
+    ]
+
+    var model_path: String = ""
+    for path in candidates:
+        if FileAccess.file_exists(path):
+            model_path = path
+            break
+
+    if model_path.is_empty():
+        return false
+
+    var document: GLTFDocument = GLTFDocument.new()
+    var state: GLTFState = GLTFState.new()
+    var err: Error = document.append_from_file(model_path,state)
+    if err != OK:
+        push_warning("Could not load external gold kart GLB: " + model_path)
+        return false
+
+    var model: Node = document.generate_scene(state)
+    if model == null or not (model is Node3D):
+        push_warning("External gold kart GLB did not generate a Node3D scene.")
+        return false
+
+    var model_3d: Node3D = model as Node3D
+    model_3d.name = "GoldDragonBlenderModel"
+    # Blender was authored with -Y as forward; glTF conversion presents it
+    # opposite Godot kart forward, so turn it around.
+    model_3d.rotation_degrees.y = 180.0
+    model_3d.scale = Vector3(0.90,0.90,0.90)
+    root.add_child(model_3d)
+    return true
+
 
 func _build_gold_foundation(root: Node3D, body_mat: StandardMaterial3D, dark: StandardMaterial3D) -> void:
     # Premium full-body shell: deep carbon-black paint, integrated glass and detailed wheels.
