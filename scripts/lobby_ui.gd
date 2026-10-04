@@ -506,9 +506,6 @@ func _show_nickname_overlay(first_time: bool) -> void:
         save_button.text = "프로필 저장"
         save_button.custom_minimum_size.y = 46
         _style_button(save_button,true)
-        save_button.pressed.connect(_confirm_nickname.bind(nickname_edit.text))
-        # Use a wrapper so the current text is read at click time.
-        save_button.pressed.disconnect(_confirm_nickname.bind(nickname_edit.text))
         save_button.pressed.connect(_confirm_nickname_from_button)
         v.add_child(save_button)
 

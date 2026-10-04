@@ -667,7 +667,6 @@ func _on_server_disconnected() -> void:
     _return_to_lobby()
 
 @rpc("any_peer","call_remote","reliable")
-@rpc("any_peer","call_remote","reliable")
 func _request_spawn(id: String, nickname: String) -> void:
     if not multiplayer.is_server():
         return
@@ -686,6 +685,7 @@ func _net_spawn_kart(peer_id: int, id: String, nickname: String) -> void:
     network_names[peer_id] = nickname
     _spawn_network_kart_local(peer_id,id,nickname)
 
+@rpc("authority","call_remote","reliable")
 func _net_remove_kart(peer_id: int) -> void:
     _remove_network_kart_local(peer_id)
 
