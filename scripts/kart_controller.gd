@@ -63,6 +63,13 @@ const CORNER_SLIP_MAX_DEG: float = 10.5
 const CORNER_SLIP_RESPONSE: float = 5.8
 const CORNER_SLIP_RECOVERY: float = 8.0
 
+# Lightweight pooled red drift marks for the endgame kart.
+const RED_DRIFT_MARK_POOL_SIZE: int = 48
+const RED_DRIFT_MARK_LIFETIME: float = 1.75
+const RED_DRIFT_MARK_SAMPLE_INTERVAL: float = 0.082
+const RED_DRIFT_REAR_OFFSET: float = 0.92
+const RED_DRIFT_TIRE_OFFSET: float = 1.14
+
 var gold_boost_root: Node3D
 var speed_fx_root: Node3D
 var speed_streaks: Array[MeshInstance3D] = []
@@ -80,6 +87,12 @@ var gold_boost_activation: float = 0.0
 var gold_boost_was_active: bool = false
 var boost_fx_time: float = 0.0
 var gold_red_boost_materials: Array[StandardMaterial3D] = []
+
+var red_drift_marks_root: Node3D
+var red_drift_mark_pool: Array[MeshInstance3D] = []
+var red_drift_mark_ages: Array[float] = []
+var red_drift_mark_cursor: int = 0
+var red_drift_mark_sample_timer: float = 0.0
 var remote_position: Vector3 = Vector3.ZERO
 var remote_yaw: float = 0.0
 var remote_speed: float = 0.0
@@ -103,6 +116,10 @@ func setup(id: String, track_ref: TrackBuilder, mode: String = "player1", spawn_
     remote_position = global_position
     remote_yaw = rotation.y
     started_at = Time.get_ticks_msec()
+
+    if kart_id == "gold" and (mode == "player1" or mode == "player2"):
+        _setup_red_drift_mark_pool()
+
 func set_race_locked(value: bool) -> void:
     race_locked = value
     if value:
@@ -1815,6 +1832,8 @@ func _physics_process(delta: float) -> void:
         info = track.nearest_track_info(global_position)
         track_idx = int(info["index"])
 
+    _update_red_drift_marks(delta,drifting)
+
     last_motion_position = global_position
     _update_lap(track_idx)
 
@@ -1842,8 +1861,119 @@ func _physics_process(delta: float) -> void:
         drift_chain_timer = 0.0
         collision_recovery_timer = 0.0
         landing_impact_timer = 0.0
+        _clear_red_drift_marks()
 
     hud_update.emit(int(abs(forward_speed)*3.6),lap,n2o_count,clamp(drift_charge,0.0,100.0),offroad)
+
+func _setup_red_drift_mark_pool() -> void:
+    if red_drift_marks_root != null or get_parent() == null:
+        return
+
+    red_drift_marks_root = Node3D.new()
+    red_drift_marks_root.name = "RedDriftMarksPool"
+    get_parent().add_child(red_drift_marks_root)
+
+    var mark_mesh: BoxMesh = BoxMesh.new()
+    mark_mesh.size = Vector3(0.105,0.010,0.58)
+
+    var mark_mat: StandardMaterial3D = StandardMaterial3D.new()
+    mark_mat.albedo_color = Color(0.88,0.012,0.020,0.86)
+    mark_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+    mark_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+    mark_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+
+    red_drift_mark_pool.clear()
+    red_drift_mark_ages.clear()
+
+    for i in range(RED_DRIFT_MARK_POOL_SIZE):
+        var mark: MeshInstance3D = MeshInstance3D.new()
+        mark.name = "RedSkid_%02d" % i
+        mark.mesh = mark_mesh
+        mark.material_override = mark_mat
+        mark.visible = false
+        mark.transparency = 1.0
+        mark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+        red_drift_marks_root.add_child(mark)
+        red_drift_mark_pool.append(mark)
+        red_drift_mark_ages.append(RED_DRIFT_MARK_LIFETIME)
+
+    red_drift_mark_cursor = 0
+    red_drift_mark_sample_timer = 0.0
+
+
+func _spawn_red_drift_mark(position: Vector3, yaw: float) -> void:
+    if red_drift_mark_pool.is_empty():
+        return
+
+    var index: int = red_drift_mark_cursor
+    red_drift_mark_cursor = (red_drift_mark_cursor+1) % red_drift_mark_pool.size()
+
+    var mark: MeshInstance3D = red_drift_mark_pool[index]
+    mark.global_position = position
+    mark.global_rotation = Vector3(0.0,yaw,0.0)
+    mark.transparency = 0.0
+    mark.visible = true
+    red_drift_mark_ages[index] = 0.0
+
+
+func _update_red_drift_marks(delta: float, drifting: bool) -> void:
+    if red_drift_mark_pool.is_empty():
+        return
+
+    # Fade a fixed pool instead of allocating/freeing meshes during the race.
+    for i in range(red_drift_mark_pool.size()):
+        var mark: MeshInstance3D = red_drift_mark_pool[i]
+        if not mark.visible:
+            continue
+
+        var age: float = red_drift_mark_ages[i]+delta
+        red_drift_mark_ages[i] = age
+
+        if age >= RED_DRIFT_MARK_LIFETIME:
+            mark.visible = false
+            mark.transparency = 1.0
+            continue
+
+        # Stay vivid briefly, then fade smoothly.
+        var fade_start: float = RED_DRIFT_MARK_LIFETIME*0.28
+        var alpha: float = 1.0
+        if age > fade_start:
+            alpha = 1.0-(age-fade_start)/(RED_DRIFT_MARK_LIFETIME-fade_start)
+        mark.transparency = 1.0-clamp(alpha,0.0,1.0)
+
+    red_drift_mark_sample_timer = max(0.0,red_drift_mark_sample_timer-delta)
+
+    if not drifting or abs(forward_speed) < DRIFT_MIN_SPEED or red_drift_mark_sample_timer > 0.0:
+        return
+
+    red_drift_mark_sample_timer = RED_DRIFT_MARK_SAMPLE_INTERVAL
+
+    var body_forward: Vector3 = -global_transform.basis.z.normalized()
+    var body_right: Vector3 = global_transform.basis.x.normalized()
+    var rear_center: Vector3 = global_position-body_forward*RED_DRIFT_REAR_OFFSET
+
+    # Kart rides at road height + 0.55, so place the strips just above the road.
+    var road_y: float = global_position.y-0.535-jump_height
+
+    for side in [-1.0,1.0]:
+        var mark_pos: Vector3 = rear_center+body_right*(float(side)*RED_DRIFT_TIRE_OFFSET)
+        mark_pos.y = road_y
+        _spawn_red_drift_mark(mark_pos,global_rotation.y)
+
+
+func _clear_red_drift_marks() -> void:
+    for i in range(red_drift_mark_pool.size()):
+        red_drift_mark_pool[i].visible = false
+        red_drift_mark_pool[i].transparency = 1.0
+        red_drift_mark_ages[i] = RED_DRIFT_MARK_LIFETIME
+    red_drift_mark_sample_timer = 0.0
+
+
+func _exit_tree() -> void:
+    if red_drift_marks_root != null and is_instance_valid(red_drift_marks_root):
+        red_drift_marks_root.queue_free()
+    red_drift_marks_root = null
+
 
 func launch_kart(impulse: float = 5.8) -> void:
     if jump_cooldown > 0.0:
