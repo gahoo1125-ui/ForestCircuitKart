@@ -34,9 +34,8 @@ jobs:
           BLENDER_URL="https://download.blender.org/release/Blender5.2/blender-5.2.2-linux-x64.tar.xz"
           curl -L --fail --retry 3 "$BLENDER_URL" -o /tmp/blender.tar.xz
           tar -xf /tmp/blender.tar.xz -C /tmp
-          BLENDER_BIN="$(find /tmp -maxdepth 2 -type f -name blender -path '*/blender-5.2.2-*/*' | head -n 1)"
-          test -n "$BLENDER_BIN"
-          chmod +x "$BLENDER_BIN"
+          BLENDER_BIN="/tmp/blender-5.2.2-linux-x64/blender"
+          test -x "$BLENDER_BIN"
 
           "$BLENDER_BIN" --background /tmp/gold-kart/gold_kart.blend --python assets/models/export_gold_kart.py
           test -s build/gold_dragon_kart.glb
