@@ -252,9 +252,9 @@ func update_rankings(kart_refs: Array[KartController], track_ref: TrackBuilder, 
         if kart.finished:
             progress += n * 4
 
-        var display_name: String = kart.kart_id
-        if data.has(kart.kart_id):
-            display_name = str((data[kart.kart_id] as Dictionary).get("display_name",kart.kart_id))
+        var display_name: String = kart.driver_name
+        if display_name.is_empty():
+            display_name = kart.kart_id
 
         entries.append({
             "kart":kart,

@@ -35,6 +35,10 @@ var selected_label_center: Label
 var description_label: Label
 var start_button: Button
 var current_tab: String = "kart"
+var nickname_overlay: Control
+var nickname_edit: LineEdit
+var nickname_error: Label
+var nickname_title: Label
 
 const RARITY_COLORS: Dictionary = {
     "일반":Color(0.78,0.84,0.90),
@@ -49,6 +53,7 @@ func _ready() -> void:
     displayed_gold = float(profile.get("gold",0))
     selected_kart = str(profile.get("selected_kart","rookie"))
     _build_ui()
+    _ensure_account_setup()
     set_process(true)
 
 func configure(data: Dictionary, order: Array[String], lan_ip: String, lan_port: int) -> void:
@@ -175,12 +180,19 @@ func _build_ui() -> void:
     xp_bar.max_value = 1
     profile_box.add_child(xp_bar)
 
+    var profile_button: Button = Button.new()
+    profile_button.text = "프로필"
+    profile_button.custom_minimum_size = Vector2(66,32)
+    _style_button(profile_button,false)
+    profile_button.pressed.connect(_open_account_editor)
+    profile_box.add_child(profile_button)
+
     var left_space: Control = Control.new()
     left_space.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     top_row.add_child(left_space)
 
     for item in [
-        ["KART","kart"],["MODE","mode"],["TRACK","map"],["DRAW","gacha"],["GEAR","equipment"]
+        ["카트","kart"],["레이스","mode"],["맵","map"],["뽑기","gacha"],["장비","equipment"]
     ]:
         var nav_button: Button = Button.new()
         nav_button.text = str(item[0])
@@ -329,7 +341,7 @@ func _build_ui() -> void:
     content_margin.add_child(content_root)
 
     var section_tag: Label = Label.new()
-    section_tag.text = "GARAGE CONTROL"
+    section_tag.text = "CONTROL"
     section_tag.add_theme_font_size_override("font_size",10)
     section_tag.modulate = Color(0.72,0.16,0.18)
     content_root.add_child(section_tag)
@@ -409,6 +421,126 @@ func _build_ui() -> void:
     start_button.add_theme_color_override("font_hover_color",Color.WHITE)
     start_button.pressed.connect(_on_start_pressed)
     root.add_child(start_button)
+
+func get_player_name() -> String:
+    var nickname: String = str(profile.get("player_name","")).strip_edges()
+    return nickname if not nickname.is_empty() else "Racer"
+
+
+func _ensure_account_setup() -> void:
+    if bool(profile.get("account_created",false)) and not str(profile.get("player_name","")).is_empty():
+        return
+    _show_nickname_overlay(true)
+
+
+func _open_account_editor() -> void:
+    _show_nickname_overlay(false)
+
+
+func _show_nickname_overlay(first_time: bool) -> void:
+    if nickname_overlay == null:
+        nickname_overlay = Control.new()
+        nickname_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+        nickname_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+        nickname_overlay.z_index = 200
+        add_child(nickname_overlay)
+
+        var dim: ColorRect = ColorRect.new()
+        dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+        dim.color = Color(0.002,0.003,0.006,0.88)
+        nickname_overlay.add_child(dim)
+
+        var center: CenterContainer = CenterContainer.new()
+        center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+        nickname_overlay.add_child(center)
+
+        var card: PanelContainer = PanelContainer.new()
+        card.custom_minimum_size = Vector2(470,300)
+        card.add_theme_stylebox_override("panel",_panel(Color(0.010,0.014,0.022,0.99),Color(0.72,0.055,0.065,1.0),12))
+        center.add_child(card)
+
+        var margin: MarginContainer = MarginContainer.new()
+        margin.add_theme_constant_override("margin_left",32)
+        margin.add_theme_constant_override("margin_right",32)
+        margin.add_theme_constant_override("margin_top",28)
+        margin.add_theme_constant_override("margin_bottom",28)
+        card.add_child(margin)
+
+        var v: VBoxContainer = VBoxContainer.new()
+        v.add_theme_constant_override("separation",13)
+        margin.add_child(v)
+
+        var account_tag: Label = Label.new()
+        account_tag.text = "RACER PROFILE"
+        account_tag.modulate = Color(0.90,0.16,0.18)
+        account_tag.add_theme_font_size_override("font_size",12)
+        v.add_child(account_tag)
+
+        nickname_title = Label.new()
+        nickname_title.text = "레이서 이름 만들기"
+        nickname_title.add_theme_font_size_override("font_size",28)
+        nickname_title.modulate = Color(0.97,0.98,1.0)
+        v.add_child(nickname_title)
+
+        var guide: Label = Label.new()
+        guide.text = "이 닉네임은 로비와 레이스 순위표에 표시됩니다.\n진행도·골드·보유 카트도 이 PC에 함께 저장됩니다."
+        guide.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        guide.modulate = Color(0.62,0.68,0.76)
+        v.add_child(guide)
+
+        nickname_edit = LineEdit.new()
+        nickname_edit.placeholder_text = "닉네임 2~12자"
+        nickname_edit.max_length = 12
+        nickname_edit.custom_minimum_size.y = 46
+        nickname_edit.add_theme_font_size_override("font_size",18)
+        nickname_edit.text_submitted.connect(_confirm_nickname)
+        v.add_child(nickname_edit)
+
+        nickname_error = Label.new()
+        nickname_error.text = ""
+        nickname_error.modulate = Color(1.0,0.30,0.32)
+        nickname_error.add_theme_font_size_override("font_size",12)
+        v.add_child(nickname_error)
+
+        var save_button: Button = Button.new()
+        save_button.text = "프로필 저장"
+        save_button.custom_minimum_size.y = 46
+        _style_button(save_button,true)
+        save_button.pressed.connect(_confirm_nickname.bind(nickname_edit.text))
+        # Use a wrapper so the current text is read at click time.
+        save_button.pressed.disconnect(_confirm_nickname.bind(nickname_edit.text))
+        save_button.pressed.connect(_confirm_nickname_from_button)
+        v.add_child(save_button)
+
+    nickname_overlay.visible = true
+    nickname_title.text = "레이서 이름 만들기" if first_time else "프로필 닉네임 변경"
+    nickname_edit.text = str(profile.get("player_name",""))
+    nickname_error.text = ""
+    if start_button:
+        start_button.disabled = first_time
+    nickname_edit.grab_focus()
+
+
+func _confirm_nickname_from_button() -> void:
+    if nickname_edit:
+        _confirm_nickname(nickname_edit.text)
+
+
+func _confirm_nickname(value: String) -> void:
+    var clean: String = ProfileManager.sanitize_nickname(value)
+    if clean.length() < 2:
+        nickname_error.text = "닉네임은 2자 이상 입력해줘."
+        return
+
+    profile = ProfileManager.create_or_update_account(profile,clean)
+    displayed_gold = float(profile.get("gold",0))
+    _refresh_profile_bar()
+    if nickname_overlay:
+        nickname_overlay.visible = false
+    if start_button:
+        start_button.disabled = false
+    result_label.text = "%s 프로필로 접속됨" % get_player_name()
+
 
 func _preview_mat(color: Color, metallic: float = 0.0, roughness: float = 0.75) -> StandardMaterial3D:
     var m: StandardMaterial3D = StandardMaterial3D.new()
@@ -1006,8 +1138,13 @@ func _refresh_profile_bar() -> void:
     var level: int = int(profile.get("level",1))
     var xp: int = int(profile.get("xp",0))
     var need: int = _xp_needed(level)
-    player_label.text = str(profile.get("player_name","Racer"))
-    level_label.text = "LV.%d" % level
+    var nickname: String = str(profile.get("player_name",""))
+    if nickname.is_empty():
+        nickname = "새 레이서"
+    var profile_id: String = str(profile.get("profile_id",""))
+    var short_id: String = profile_id.substr(max(0,profile_id.length()-4))
+    player_label.text = "◉  " + nickname
+    level_label.text = "LV.%d%s" % [level,("  ·  #%s" % short_id if not short_id.is_empty() else "")]
     xp_bar.max_value = need
     xp_bar.value = xp
     gold_label.text = "%d GOLD" % int(round(displayed_gold))

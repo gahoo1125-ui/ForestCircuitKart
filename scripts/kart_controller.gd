@@ -8,6 +8,7 @@ var stats: Dictionary = {}
 var track: TrackBuilder
 var kart_id: String = "rookie"
 var control_mode: String = "player1"
+var driver_name: String = ""
 
 var forward_speed: float = 0.0
 var steer_state: float = 0.0

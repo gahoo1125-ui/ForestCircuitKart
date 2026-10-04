@@ -50,7 +50,10 @@ var split_cam2: Camera3D
 
 var lan_peer: ENetMultiplayerPeer
 var network_specs: Dictionary = {}
+var network_names: Dictionary = {}
 var network_karts: Dictionary = {}
+
+const CPU_DRIVER_NAMES: Array[String] = ["NOVA","RIN","BLAZE","MIRA","ZERO"]
 var net_send_accum: float = 0.0
 
 var kart_order: Array[String] = ["rookie","koala_sprinter","bamboo_koala_gt","koala_drift_x","phantom","yanghyunhoo_turbo","yanghyunhoo_blaze","koala_hyunhoo_mix","gold"]
@@ -300,6 +303,12 @@ func _spawn_kart(id: String, mode: String, spawn_index: int, lane_offset: float)
     var kart: KartController = KartController.new()
     add_child(kart)
     kart.setup(id,track,mode,spawn_index,lane_offset)
+    if mode == "player1" and lobby_ui:
+        kart.driver_name = lobby_ui.get_player_name()
+    elif mode == "player2":
+        kart.driver_name = "PLAYER 2"
+    elif mode == "cpu":
+        kart.driver_name = "CPU"
     if lobby_ui and mode == "player1":
         kart.apply_upgrade_level(lobby_ui.get_upgrade_level(id))
         kart.apply_equipment(lobby_ui.get_equipped_equipment())
@@ -324,6 +333,7 @@ func _start_cpu_mode() -> void:
         var cpu_id: String = kart_order[(i + 1) % kart_order.size()]
         var lane: float = -4.5 + float(i % 3) * 4.5
         var cpu: KartController = _spawn_kart(cpu_id,"cpu",-5 - i*4,lane)
+        cpu.driver_name = CPU_DRIVER_NAMES[i % CPU_DRIVER_NAMES.size()]
         cpu_karts.append(cpu)
 
     _create_hud(player)
@@ -572,11 +582,14 @@ func _start_lan_host() -> void:
 
     multiplayer.multiplayer_peer = lan_peer
     network_specs.clear()
+    network_names.clear()
     network_karts.clear()
+    var nickname: String = lobby_ui.get_player_name() if lobby_ui else "HOST"
     network_specs[1] = selected_kart
+    network_names[1] = nickname
 
     menu_layer.visible = false
-    _spawn_network_kart_local(1,selected_kart)
+    _spawn_network_kart_local(1,selected_kart,nickname)
     network_status_label.text = "호스트 실행 중 · 다른 PC에서 %s 입력" % _get_lan_ip()
 
 func _start_lan_join() -> void:
@@ -594,11 +607,12 @@ func _start_lan_join() -> void:
 
     multiplayer.multiplayer_peer = lan_peer
     network_specs.clear()
+    network_names.clear()
     network_karts.clear()
     menu_layer.visible = false
     network_status_label.text = "호스트에 연결 중..."
 
-func _spawn_network_kart_local(peer_id: int, id: String) -> void:
+func _spawn_network_kart_local(peer_id: int, id: String, nickname: String = "Racer") -> void:
     if network_karts.has(peer_id):
         return
 
@@ -606,6 +620,7 @@ func _spawn_network_kart_local(peer_id: int, id: String) -> void:
     var mode: String = "player1" if peer_id == local_id else "remote"
     var lane: float = -3.0 if peer_id % 2 == 0 else 3.0
     var kart: KartController = _spawn_kart(id,mode,-(peer_id % 5)*4,lane)
+    kart.driver_name = nickname
     network_karts[peer_id] = kart
 
     if peer_id == local_id:
@@ -628,17 +643,20 @@ func _on_peer_connected(peer_id: int) -> void:
     if not multiplayer.is_server():
         return
     for existing_id in network_specs.keys():
-        _net_spawn_kart.rpc_id(peer_id,int(existing_id),str(network_specs[existing_id]))
+        var existing_name: String = str(network_names.get(existing_id,"Racer"))
+        _net_spawn_kart.rpc_id(peer_id,int(existing_id),str(network_specs[existing_id]),existing_name)
 
 func _on_peer_disconnected(peer_id: int) -> void:
     if multiplayer.is_server():
         network_specs.erase(peer_id)
+        network_names.erase(peer_id)
         _remove_network_kart_local(peer_id)
         _net_remove_kart.rpc(peer_id)
 
 func _on_connected_to_server() -> void:
     network_status_label.text = "LAN 연결 성공"
-    _request_spawn.rpc_id(1,selected_kart)
+    var nickname: String = lobby_ui.get_player_name() if lobby_ui else "Racer"
+    _request_spawn.rpc_id(1,selected_kart,nickname)
 
 func _on_connection_failed() -> void:
     network_status_label.text = "LAN 연결 실패 · IP/방화벽 확인"
@@ -649,20 +667,25 @@ func _on_server_disconnected() -> void:
     _return_to_lobby()
 
 @rpc("any_peer","call_remote","reliable")
-func _request_spawn(id: String) -> void:
+@rpc("any_peer","call_remote","reliable")
+func _request_spawn(id: String, nickname: String) -> void:
     if not multiplayer.is_server():
         return
     var peer_id: int = multiplayer.get_remote_sender_id()
+    var clean_name: String = ProfileManager.sanitize_nickname(nickname)
+    if clean_name.is_empty():
+        clean_name = "Racer"
     network_specs[peer_id] = id
-    _spawn_network_kart_local(peer_id,id)
-    _net_spawn_kart.rpc(peer_id,id)
+    network_names[peer_id] = clean_name
+    _spawn_network_kart_local(peer_id,id,clean_name)
+    _net_spawn_kart.rpc(peer_id,id,clean_name)
 
 @rpc("authority","call_remote","reliable")
-func _net_spawn_kart(peer_id: int, id: String) -> void:
+func _net_spawn_kart(peer_id: int, id: String, nickname: String) -> void:
     network_specs[peer_id] = id
-    _spawn_network_kart_local(peer_id,id)
+    network_names[peer_id] = nickname
+    _spawn_network_kart_local(peer_id,id,nickname)
 
-@rpc("authority","call_remote","reliable")
 func _net_remove_kart(peer_id: int) -> void:
     _remove_network_kart_local(peer_id)
 
@@ -1029,9 +1052,9 @@ func _get_ranked_entries() -> Array[Dictionary]:
     for kart in finished_order:
         if kart == null or not is_instance_valid(kart):
             continue
-        var display_name: String = kart.kart_id
-        if kart_data.has(kart.kart_id):
-            display_name = str((kart_data[kart.kart_id] as Dictionary).get("display_name",kart.kart_id))
+        var display_name: String = kart.driver_name
+        if display_name.is_empty():
+            display_name = kart.kart_id
         entries.append({
             "kart":kart,
             "kart_id":kart.kart_id,
@@ -1048,9 +1071,9 @@ func _get_eliminated_names() -> Array[String]:
             continue
         if finished_order.has(kart):
             continue
-        var display_name: String = kart.kart_id
-        if kart_data.has(kart.kart_id):
-            display_name = str((kart_data[kart.kart_id] as Dictionary).get("display_name",kart.kart_id))
+        var display_name: String = kart.driver_name
+        if display_name.is_empty():
+            display_name = kart.kart_id
         names.append(display_name)
     return names
 
