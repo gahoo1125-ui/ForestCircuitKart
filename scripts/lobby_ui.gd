@@ -478,8 +478,8 @@ func _build_preview_world() -> void:
     env.background_mode = Environment.BG_COLOR
     env.background_color = Color(0.005,0.007,0.011)
     env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-    env.ambient_light_color = Color(0.20,0.23,0.30)
-    env.ambient_light_energy = 0.72
+    env.ambient_light_color = Color(0.42,0.44,0.50)
+    env.ambient_light_energy = 0.92
     env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
     env_node.environment = env
     preview_viewport.add_child(env_node)
@@ -487,27 +487,35 @@ func _build_preview_world() -> void:
     # Main white key light.
     var key: DirectionalLight3D = DirectionalLight3D.new()
     key.rotation_degrees = Vector3(-48,-32,0)
-    key.light_energy = 1.45
-    key.light_color = Color(0.88,0.91,1.0)
+    key.light_energy = 1.85
+    key.light_color = Color(1.0,0.97,0.94)
     key.shadow_enabled = true
     preview_viewport.add_child(key)
 
     # Red rim light and cool fill sell the premium garage without many lights.
     var red_rim: OmniLight3D = OmniLight3D.new()
     red_rim.position = Vector3(4.5,2.2,1.2)
-    red_rim.light_energy = 3.0
+    red_rim.light_energy = 1.55
     red_rim.omni_range = 10.0
-    red_rim.light_color = Color(1.0,0.035,0.045)
+    red_rim.light_color = Color(1.0,0.08,0.07)
     red_rim.shadow_enabled = false
     preview_viewport.add_child(red_rim)
 
     var cool_fill: OmniLight3D = OmniLight3D.new()
     cool_fill.position = Vector3(-4.2,2.8,-2.5)
-    cool_fill.light_energy = 1.8
+    cool_fill.light_energy = 1.20
     cool_fill.omni_range = 11.0
-    cool_fill.light_color = Color(0.28,0.42,0.72)
+    cool_fill.light_color = Color(0.60,0.67,0.80)
     cool_fill.shadow_enabled = false
     preview_viewport.add_child(cool_fill)
+
+    var front_fill: OmniLight3D = OmniLight3D.new()
+    front_fill.position = Vector3(0.0,2.4,-5.2)
+    front_fill.light_energy = 1.55
+    front_fill.omni_range = 11.5
+    front_fill.light_color = Color(1.0,0.92,0.84)
+    front_fill.shadow_enabled = false
+    preview_viewport.add_child(front_fill)
 
     # Glossy black garage floor.
     var floor: MeshInstance3D = MeshInstance3D.new()
@@ -527,7 +535,7 @@ func _build_preview_world() -> void:
     platform_mesh.radial_segments = 48
     platform.mesh = platform_mesh
     platform.position = Vector3(0.25,0.08,0.30)
-    platform.material_override = _preview_mat(Color(0.045,0.050,0.060),0.72,0.16)
+    platform.material_override = _preview_mat(Color(0.075,0.080,0.095),0.64,0.18)
     preview_viewport.add_child(platform)
 
     var ring: MeshInstance3D = MeshInstance3D.new()
