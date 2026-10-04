@@ -211,7 +211,7 @@ func _build_kart() -> void:
         if not gold_external_model_loaded:
             _build_gold_dragon(root)
         _build_gold_boost()
-        _build_gold_dragon_flight()
+        # Heavy dragon-shaped boost VFX intentionally disabled for performance.
 
 func _build_cute_kart(root: Node3D, body_mat: StandardMaterial3D, dark: StandardMaterial3D, c: Array) -> void:
     var light_mat: StandardMaterial3D = StandardMaterial3D.new()
@@ -1172,64 +1172,33 @@ func _add_dragon_wrap_path(parent: Node3D, path: Array[Vector3], mat: StandardMa
         parent.add_child(seg)
 
 func _build_gold_boost() -> void:
-    # Lightweight visual-only exhaust package. No boost stats are changed.
+    # Minimal exhaust-only boost cue for the endgame kart.
+    # The red body glow is the primary boost visual.
     gold_boost_root = Node3D.new()
-    gold_boost_root.name = "GoldenDragonExhaustVFX"
+    gold_boost_root.name = "RedBoostExhaustLite"
     gold_boost_root.visible = false
     add_child(gold_boost_root)
 
-    var gold_mat: StandardMaterial3D = StandardMaterial3D.new()
-    gold_mat.albedo_color = Color(1.0,0.70,0.08)
-    gold_mat.emission_enabled = true
-    gold_mat.emission = Color(1.0,0.42,0.012)
-    gold_mat.emission_energy_multiplier = 5.2
-    gold_mat.roughness = 0.06
+    var flame_mat: StandardMaterial3D = StandardMaterial3D.new()
+    flame_mat.albedo_color = Color(1.0,0.08,0.05)
+    flame_mat.emission_enabled = true
+    flame_mat.emission = Color(1.0,0.015,0.008)
+    flame_mat.emission_energy_multiplier = 4.2
+    flame_mat.roughness = 0.08
 
-    var core_mat: StandardMaterial3D = StandardMaterial3D.new()
-    core_mat.albedo_color = Color(1.0,0.96,0.52)
-    core_mat.emission_enabled = true
-    core_mat.emission = Color(1.0,0.82,0.22)
-    core_mat.emission_energy_multiplier = 6.2
-    core_mat.roughness = 0.04
-
-    for x in [-0.52,0.52]:
-        var sx: float = float(x)
-
+    # Only two low-segment exhaust flames. No rings, sparks or dragon meshes.
+    for x in [-0.46,0.46]:
         var flame: MeshInstance3D = MeshInstance3D.new()
-        var fm: CylinderMesh = CylinderMesh.new()
-        fm.top_radius = 0.035
-        fm.bottom_radius = 0.30
-        fm.height = 1.70
-        fm.radial_segments = 12
-        flame.mesh = fm
-        flame.position = Vector3(sx,0.39,1.92)
+        var mesh: CylinderMesh = CylinderMesh.new()
+        mesh.top_radius = 0.025
+        mesh.bottom_radius = 0.16
+        mesh.height = 0.82
+        mesh.radial_segments = 6
+        flame.mesh = mesh
+        flame.position = Vector3(float(x),0.40,1.56)
         flame.rotation_degrees.x = 90.0
-        flame.material_override = gold_mat
+        flame.material_override = flame_mat
         gold_boost_root.add_child(flame)
-
-        var core: MeshInstance3D = MeshInstance3D.new()
-        var cm: CylinderMesh = CylinderMesh.new()
-        cm.top_radius = 0.020
-        cm.bottom_radius = 0.13
-        cm.height = 1.10
-        cm.radial_segments = 10
-        core.mesh = cm
-        core.position = Vector3(sx,0.39,1.65)
-        core.rotation_degrees.x = 90.0
-        core.material_override = core_mat
-        gold_boost_root.add_child(core)
-
-        var ring: MeshInstance3D = MeshInstance3D.new()
-        var rm: TorusMesh = TorusMesh.new()
-        rm.inner_radius = 0.16
-        rm.outer_radius = 0.23
-        rm.rings = 12
-        rm.ring_segments = 8
-        ring.mesh = rm
-        ring.position = Vector3(sx,0.39,1.34)
-        ring.rotation_degrees.x = 90.0
-        ring.material_override = core_mat
-        gold_boost_root.add_child(ring)
 
 func _build_speed_fx() -> void:
     speed_fx_root = Node3D.new()
@@ -1241,24 +1210,23 @@ func _build_speed_fx() -> void:
     streak_mat.albedo_color = Color(0.82,0.93,1.0)
     streak_mat.emission_enabled = true
     streak_mat.emission = Color(0.48,0.78,1.0)
-    streak_mat.emission_energy_multiplier = 2.2
-    streak_mat.roughness = 0.18
+    streak_mat.emission_energy_multiplier = 1.8
+    streak_mat.roughness = 0.22
 
+    # Gold/endgame kart uses body glow instead of extra speed-line meshes.
     if kart_id == "gold":
-        streak_mat.albedo_color = Color(1.0,0.80,0.20)
-        streak_mat.emission = Color(1.0,0.52,0.05)
-        streak_mat.emission_energy_multiplier = 3.0
+        return
 
-    for i in range(10):
+    for i in range(4):
         var streak: MeshInstance3D = MeshInstance3D.new()
         var streak_mesh: BoxMesh = BoxMesh.new()
-        streak_mesh.size = Vector3(0.045,0.045,1.0 + float(i % 4) * 0.32)
+        streak_mesh.size = Vector3(0.038,0.038,0.90 + float(i % 2) * 0.24)
         streak.mesh = streak_mesh
         streak.material_override = streak_mat
         streak.position = Vector3(
-            -1.15 + float(i % 5) * 0.58,
-            0.22 + float(i / 5) * 0.72,
-            1.5 + float(i) * 0.36
+            -0.87 + float(i % 4) * 0.58,
+            0.32 + float(i % 2) * 0.42,
+            1.7 + float(i) * 0.42
         )
         speed_fx_root.add_child(streak)
         speed_streaks.append(streak)
@@ -1435,95 +1403,30 @@ func _build_gold_dragon_flight() -> void:
 func _update_boost_fx(delta: float, boosting: bool) -> void:
     boost_fx_time += delta
 
+    # Endgame kart boost is intentionally lightweight:
+    # red body material brightening + two exhaust flames only.
     if kart_id == "gold":
         _update_gold_red_boost_glow(boosting,delta)
 
-    # No lingering afterimage. VFX exists only while boost is actually active.
     if speed_fx_root:
-        speed_fx_root.visible = boosting
-        if boosting:
-            var stretch: float = 1.0+sin(boost_fx_time*20.0)*0.12
-            speed_fx_root.scale = Vector3(1.0,1.0,stretch)
+        speed_fx_root.visible = boosting and kart_id != "gold"
+        if speed_fx_root.visible:
             for i in range(speed_streaks.size()):
                 var streak: MeshInstance3D = speed_streaks[i]
-                streak.visible = i < 6
-                streak.position.z = 1.3+fmod(boost_fx_time*(9.0+float(i)*0.42)+float(i)*0.46,4.0)
-                streak.scale.z = 0.88+sin(boost_fx_time*20.0+float(i))*0.18
+                streak.position.z = 1.5+fmod(boost_fx_time*(7.5+float(i)*0.35)+float(i)*0.48,3.4)
         else:
             speed_fx_root.scale = Vector3.ONE
 
     if gold_boost_root:
         gold_boost_root.visible = boosting
         if boosting:
-            var pulse: float = 1.0+sin(boost_fx_time*22.0)*0.10
+            var pulse: float = 1.0+sin(boost_fx_time*18.0)*0.06
             gold_boost_root.scale = Vector3(1.0,1.0,pulse)
         else:
             gold_boost_root.scale = Vector3.ONE
 
-    if gold_dragon_fx_root:
-        gold_dragon_fx_root.visible = boosting
-        if boosting:
-            # Dragon stays attached to the kart while the boost is active.
-            # It does not leave a world-space trail after the kart passes.
-            var head_z: float = 2.00+sin(boost_fx_time*3.0)*0.10
-            var head_x: float = sin(boost_fx_time*2.8)*0.34
-            var head_y: float = 1.28+sin(boost_fx_time*4.8)*0.10
-            gold_dragon_head_root.position = Vector3(head_x,head_y,head_z)
-            gold_dragon_head_root.rotation.y = sin(boost_fx_time*2.4)*0.20
-            gold_dragon_head_root.rotation.z = sin(boost_fx_time*3.5)*0.08
-
-            for i in range(gold_dragon_segments.size()):
-                var t: float = float(i+1)/float(gold_dragon_segments.size())
-                var phase: float = boost_fx_time*4.2+t*8.8
-                var width: float = 0.26+t*0.68
-                var seg: MeshInstance3D = gold_dragon_segments[i]
-                seg.position = Vector3(
-                    sin(phase)*width,
-                    1.00+cos(phase*0.64)*(0.10+t*0.17),
-                    head_z+0.38+t*6.1
-                )
-                seg.rotation.y = sin(phase*0.52)*0.20
-                seg.rotation.z = sin(phase+0.6)*0.30
-                var pulse: float = 1.0+sin(boost_fx_time*8.0+t*5.0)*0.08
-                seg.scale = Vector3(1.05,0.62,1.52)*pulse*lerp(1.05,0.76,t)
-
-            for i in range(gold_dragon_mane.size()):
-                var body_index: int = min(i*3,gold_dragon_segments.size()-1)
-                var body_seg: MeshInstance3D = gold_dragon_segments[body_index]
-                var mane: MeshInstance3D = gold_dragon_mane[i]
-                mane.position = body_seg.position+Vector3(0.0,0.22,0.0)
-                mane.rotation_degrees = Vector3(78.0,0.0,sin(boost_fx_time*4.0+float(i))*34.0)
-
-            for i in range(gold_dragon_scale_nodes.size()):
-                var pair_index: int = i/2
-                var body_index: int = min(pair_index*3,gold_dragon_segments.size()-1)
-                var side: float = -1.0 if i%2==0 else 1.0
-                var body_seg: MeshInstance3D = gold_dragon_segments[body_index]
-                var scale_node: MeshInstance3D = gold_dragon_scale_nodes[i]
-                scale_node.position = body_seg.position+Vector3(side*0.19,0.05,0.0)
-                scale_node.rotation_degrees = Vector3(0.0,side*18.0,side*14.0)
-
-            for i in range(gold_dragon_claw_nodes.size()):
-                var body_index: int = min(3+i*5,gold_dragon_segments.size()-1)
-                var side: float = -1.0 if i%2==0 else 1.0
-                var claw: MeshInstance3D = gold_dragon_claw_nodes[i]
-                var body_seg: MeshInstance3D = gold_dragon_segments[body_index]
-                claw.position = body_seg.position+Vector3(side*0.34,-0.16,0.0)
-                claw.rotation_degrees = Vector3(62.0,side*22.0,side*38.0)
-
-            for i in range(gold_dragon_spark_nodes.size()):
-                var spark: MeshInstance3D = gold_dragon_spark_nodes[i]
-                var lane: float = float(i%5)-2.0
-                var cycle: float = fmod(boost_fx_time*(4.4+float(i%3)*0.55)+float(i)*0.46,5.0)
-                spark.position = Vector3(
-                    lane*0.24+sin(boost_fx_time*2.8+float(i))*0.16,
-                    0.45+float(i%3)*0.23,
-                    1.4+cycle
-                )
-                spark.scale = Vector3.ONE*(0.65+sin(boost_fx_time*7.0+float(i))*0.20)
-        else:
-            gold_dragon_head_root.rotation = Vector3.ZERO
-            gold_trail_history.clear()
+    # Dragon-shaped boost effect, scales, sparks, trail history and animation
+    # were removed from the runtime path to minimize frame-time spikes.
 
 func _read_controls() -> Dictionary:
     if control_mode == "cpu":
